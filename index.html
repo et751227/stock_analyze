@@ -16,7 +16,13 @@
 </head>
 <body>
   <h2>個股：本益比 / 殖利率 / 股價淨值比（TWSE OpenAPI）</h2>
+
+  <!-- 立即更新按鈕 -->
+  <button id="refresh">立即更新（從 TWSE 抓寫到 Sheet）</button>
+  <span id="status" style="margin-left:8px;color:#666;"></span>
+
   <div class="hint">點擊欄位可排序（PE、殖利率、PB）。資料來源：TWSE OpenAPI（盤後/每日），僅供參考。</div>
+
   <table id="t">
     <thead>
       <tr>
@@ -33,18 +39,14 @@
 
 <script>
 const $tbody = document.querySelector("#t tbody");
+const $status = document.querySelector("#status");
 let rows = [];
 let sortState = { key: "PE", asc: true };
 
-function parseNum(v) {
-  if (v === null || v === undefined) return NaN;
-  const s = String(v).replace(/,/g, "").trim();
-  const n = Number(s);
-  return isNaN(n) ? NaN : n;
-}
+function parseNum(v){ const n=Number(String(v||"").replace(/,/g,"").trim()); return isNaN(n)?NaN:n; }
 
-function render() {
-  const html = rows.map(r => `
+function render(){
+  $tbody.innerHTML = rows.map(r => `
     <tr>
       <td>${r["Code"] ?? ""}</td>
       <td>${r["Name"] ?? ""}</td>
@@ -54,35 +56,31 @@ function render() {
       <td>${r["Date"] ?? ""}</td>
     </tr>
   `).join("");
-  $tbody.innerHTML = html;
 }
 
-function sortBy(key) {
-  const asc = (sortState.key === key) ? !sortState.asc : true;
+function sortBy(key){
+  const asc = (sortState.key===key)?!sortState.asc:true;
   sortState = { key, asc };
-  rows.sort((a, b) => {
-    // 數字欄位用數字比，其他用字串
-    if (["PE","Yield(%)","PB"].includes(key)) {
-      const x = parseNum(a[key]);
-      const y = parseNum(b[key]);
-      if (isNaN(x) && isNaN(y)) return 0;
+  rows.sort((a,b)=>{
+    if(["PE","Yield(%)","PB"].includes(key)){
+      const x=parseNum(a[key]), y=parseNum(b[key]);
+      if (isNaN(x)&&isNaN(y)) return 0;
       if (isNaN(x)) return 1;
       if (isNaN(y)) return -1;
-      return asc ? (x - y) : (y - x);
+      return asc ? (x-y) : (y-x);
     } else {
-      const x = (a[key] || "").toString();
-      const y = (b[key] || "").toString();
-      return asc ? x.localeCompare(y, 'zh-Hant') : y.localeCompare(x, 'zh-Hant');
+      const x=(a[key]||"").toString(), y=(b[key]||"").toString();
+      return asc ? x.localeCompare(y,'zh-Hant') : y.localeCompare(x,'zh-Hant');
     }
   });
   render();
 }
 
-async function load() {
+async function load(){
+  $status.textContent = "載入中…";
   const res = await fetch("/api/view");
   const j = await res.json();
   const data = j.data || [];
-  // 只挑出需要的欄位，並把來源欄位名對應到表頭
   rows = data.map(d => ({
     "Code": d["Code"],
     "Name": d["Name"],
@@ -92,13 +90,29 @@ async function load() {
     "Date": d["Date"]
   }));
   sortBy("PE");
+  $status.textContent = rows.length ? `共 ${rows.length} 檔` : "目前無資料（可按上方按鈕更新）";
 }
 
-document.querySelectorAll("th[data-key]").forEach(th => {
-  th.addEventListener("click", () => sortBy(th.dataset.key));
+document.querySelectorAll("th[data-key]").forEach(th => th.addEventListener("click", () => sortBy(th.dataset.key)));
+
+document.getElementById("refresh").addEventListener("click", async ()=>{
+  const btn = document.getElementById("refresh");
+  btn.disabled = true; $status.textContent = "更新中…";
+  try {
+    const res = await fetch("/api/push");
+    const j = await res.json();
+    if (!j.ok) throw new Error(j.error || "更新失敗");
+    await load(); // 更新完成後重新讀取
+    $status.textContent = `更新完成：寫入 ${j.count} 筆`;
+  } catch(err){
+    $status.textContent = "更新失敗：" + err.message;
+  } finally {
+    btn.disabled = false;
+  }
 });
 
 load();
 </script>
 </body>
+
 </html>
