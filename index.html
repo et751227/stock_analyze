@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TWSE：本益比/殖利率/股價淨值比</title>
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif; margin: 24px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid #eee; text-align: left; }
+    th { cursor: pointer; user-select: none; position: sticky; top: 0; background: #fafafa; }
+    tr:hover { background: #f8f8ff; }
+    .hint { color: #666; font-size: 12px; margin-top: 8px; }
+    .right { text-align: right; }
+  </style>
+</head>
+<body>
+  <h2>個股：本益比 / 殖利率 / 股價淨值比（TWSE OpenAPI）</h2>
+  <div class="hint">點擊欄位可排序（PE、殖利率、PB）。資料來源：TWSE OpenAPI（盤後/每日），僅供參考。</div>
+  <table id="t">
+    <thead>
+      <tr>
+        <th data-key="Code">代碼</th>
+        <th data-key="Name">名稱</th>
+        <th class="right" data-key="PE">PE</th>
+        <th class="right" data-key="Yield(%)">殖利率(%)</th>
+        <th class="right" data-key="PB">PB</th>
+        <th data-key="Date">日期</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+<script>
+const $tbody = document.querySelector("#t tbody");
+let rows = [];
+let sortState = { key: "PE", asc: true };
+
+function parseNum(v) {
+  if (v === null || v === undefined) return NaN;
+  const s = String(v).replace(/,/g, "").trim();
+  const n = Number(s);
+  return isNaN(n) ? NaN : n;
+}
+
+function render() {
+  const html = rows.map(r => `
+    <tr>
+      <td>${r["Code"] ?? ""}</td>
+      <td>${r["Name"] ?? ""}</td>
+      <td class="right">${r["PE"] ?? ""}</td>
+      <td class="right">${r["Yield(%)"] ?? ""}</td>
+      <td class="right">${r["PB"] ?? ""}</td>
+      <td>${r["Date"] ?? ""}</td>
+    </tr>
+  `).join("");
+  $tbody.innerHTML = html;
+}
+
+function sortBy(key) {
+  const asc = (sortState.key === key) ? !sortState.asc : true;
+  sortState = { key, asc };
+  rows.sort((a, b) => {
+    // 數字欄位用數字比，其他用字串
+    if (["PE","Yield(%)","PB"].includes(key)) {
+      const x = parseNum(a[key]);
+      const y = parseNum(b[key]);
+      if (isNaN(x) && isNaN(y)) return 0;
+      if (isNaN(x)) return 1;
+      if (isNaN(y)) return -1;
+      return asc ? (x - y) : (y - x);
+    } else {
+      const x = (a[key] || "").toString();
+      const y = (b[key] || "").toString();
+      return asc ? x.localeCompare(y, 'zh-Hant') : y.localeCompare(x, 'zh-Hant');
+    }
+  });
+  render();
+}
+
+async function load() {
+  const res = await fetch("/api/view");
+  const j = await res.json();
+  const data = j.data || [];
+  // 只挑出需要的欄位，並把來源欄位名對應到表頭
+  rows = data.map(d => ({
+    "Code": d["Code"],
+    "Name": d["Name"],
+    "PE": d["PE"] || d["PEratio"],
+    "Yield(%)": d["Yield(%)"] || d["Yield"],
+    "PB": d["PB"] || d["PBratio"],
+    "Date": d["Date"]
+  }));
+  sortBy("PE");
+}
+
+document.querySelectorAll("th[data-key]").forEach(th => {
+  th.addEventListener("click", () => sortBy(th.dataset.key));
+});
+
+load();
+</script>
+</body>
+</html>
