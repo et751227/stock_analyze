@@ -6,85 +6,45 @@
   <title>個股分析 (TWSE)</title>
   
   <style>
-    body { 
-      font-family: system-ui, -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif; 
-      margin: 0; 
-      display: flex; 
-      height: 100vh; 
+    body { font-family: system-ui, -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif; margin: 0; display: flex; height: 100vh; }
+    #sidebar { width: 220px; background: #f7f7f7; border-right: 1px solid #ddd; padding: 20px; box-sizing: border-box; flex-shrink: 0; }
+    #sidebar h3 { margin-top: 0; }
+    .nav-link { display: block; padding: 10px 15px; text-decoration: none; color: #333; border-radius: 6px; cursor: pointer; }
+    .nav-link:hover { background: #e9e9e9; }
+    .nav-link.active { background: #007bff; color: white; font-weight: bold; }
+    #main-content { flex: 1; padding: 24px; overflow-y: auto; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid #eee; text-align: left; }
+    th { cursor: pointer; user-select: none; position: sticky; top: 0; background: #fafafa; z-index: 1; }
+    tr:hover { background: #f8f8ff; }
+    .hint { color: #666; font-size: 12px; margin-top: 8px; }
+    .right { text-align: right; }
+    hr { margin: 32px 0; border: 0; border-top: 1px solid #eee; }
+    .table-container { max-height: 600px; overflow-y: auto; border: 1px solid #eee; border-bottom: none; }
+    .hidden { display: none; }
+
+    /* --- 新增：模型篩選器的樣式 --- */
+    .filter-group {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      background: #fafafa;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
     }
-    #sidebar { 
-      width: 220px; 
-      background: #f7f7f7; 
-      border-right: 1px solid #ddd; 
-      padding: 20px; 
-      box-sizing: border-box; 
-      flex-shrink: 0; 
+    .filter-group label {
+      font-weight: 500;
     }
-    #sidebar h3 { 
-      margin-top: 0; 
+    .filter-group input, .filter-group select, .filter-group button {
+      padding: 8px 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
     }
-    .nav-link { 
-      display: block; 
-      padding: 10px 15px; 
-      text-decoration: none; 
-      color: #333; 
-      border-radius: 6px; 
-      cursor: pointer; 
-    }
-    .nav-link:hover { 
-      background: #e9e9e9; 
-    }
-    .nav-link.active { 
-      background: #007bff; 
-      color: white; 
-      font-weight: bold; 
-    }
-    #main-content { 
-      flex: 1; 
-      padding: 24px; 
-      overflow-y: auto; 
-    }
-    table { 
-      border-collapse: collapse; 
-      width: 100%; 
-    }
-    th, td { 
-      padding: 10px 12px; 
-      border-bottom: 1px solid #eee; 
-      text-align: left; 
-    }
-    th { 
-      cursor: pointer; 
-      user-select: none; 
-      position: sticky; 
-      top: 0; 
-      background: #fafafa; 
-      z-index: 1; 
-    }
-    tr:hover { 
-      background: #f8f8ff; 
-    }
-    .hint { 
-      color: #666; 
-      font-size: 12px; 
-      margin-top: 8px; 
-    }
-    .right { 
-      text-align: right; 
-    }
-    hr { 
-      margin: 32px 0; 
-      border: 0; 
-      border-top: 1px solid #eee; 
-    }
-    .table-container { 
-      max-height: 600px; 
-      overflow-y: auto; 
-      border: 1px solid #eee; 
-      border-bottom: none; 
-    }
-    .hidden { 
-      display: none; 
+    .filter-group input {
+      width: 60px;
     }
   </style>
 </head>
@@ -93,6 +53,7 @@
   <nav id="sidebar">
     <h3>分析項目</h3>
     <a class="nav-link" data-target="page-bwibbu">本益比/殖利率</a>
+    <a class="nav-link" data-target="page-model">我的模型分析</a>
   </nav>
 
   <main id="main-content">
@@ -104,7 +65,6 @@
     <div id="page-bwibbu" class="content-page">
       <h2>個股：本益比 / 殖利率 / 股價淨值比</h2>
       <div class="hint">點擊欄位可排序。資料來源：TWSE OpenAPI（盤後/每日），僅供參考。</div>
-      
       <div class="table-container">
         <table id="t">
           <thead>
@@ -117,24 +77,75 @@
               <th data-key="FiscalYearQuarter">資料季度</th>
             </tr>
           </thead>
-          <tbody></tbody>
-        </table>
+          <tbody id="t-body"></tbody> </table>
       </div>
     </div>
 
-  </main>
+    <div id="page-model" class="content-page hidden">
+      <h2>我的模型分析 (四象限篩選)</h2>
+      <div class="hint">此模型會自動排除 PE 為 N/A 的股票，並依照殖利率(%)由高至低排序。</div>
+      
+      <div class="filter-group">
+        <label for="pe-min">PE 範圍：</label>
+        <input type="number" id="pe-min" value="0">
+        <span>到</span>
+        <input type="number" id="pe-max" value="100">
+        
+        <label for="quadrant-select" style="margin-left: 16px;">四象限：</label>
+        <select id="quadrant-select">
+          <option value="all">-- 全部顯示 (僅過濾PE範圍) --</option>
+          <option value="low-pe-low-pb">PE 低 / PB 低</option>
+          <option value="low-pe-high-pb">PE 低 / PB 高 (績優股)</option>
+          <option value="high-pe-low-pb">PE 高 / PB 低 (轉機股)</option>
+          <option value="high-pe-high-pb">PE 高 / PB 高 (成長股)</option>
+        </select>
+
+        <button id="filter-button" style="margin-left: 16px; background: #007bff; color: white; cursor: pointer;">開始分析</button>
+      </div>
+      
+      <div class="table-container">
+        <table id="model-table">
+          <thead>
+            <tr>
+              <th data-key="Code">代碼</th>
+              <th data-key="Name">名稱</th>
+              <th class="right" data-key="PE">PE</th>
+              <th class="right" data-key="DividendYield(%)">殖利率(%)</th>
+              <th class="right" data-key="PB">PB</th>
+              <th data-key="FiscalYearQuarter">資料季度</th>
+            </tr>
+          </thead>
+          <tbody id="model-table-body">
+            </tbody>
+        </table>
+      </div>
+    </div>
+    </main>
 
 
 <script>
-// --- DOM 選擇 (簡化) ---
-const $tbody = document.querySelector("#t tbody");
+// --- DOM 選擇 ---
+const $tbody = document.querySelector("#t-body"); // 修正：對應 id
 const $status = document.querySelector("#status");
 
-let rows = [];
+// --- 新增：模型頁面的 DOM 選擇 ---
+const $peMin = document.getElementById("pe-min");
+const $peMax = document.getElementById("pe-max");
+const $quadrantSelect = document.getElementById("quadrant-select");
+const $filterButton = document.getElementById("filter-button");
+const $modelTbody = document.getElementById("model-table-body");
+
+// --- 新增：四象限的判斷基準 (您可以自行調整) ---
+// 根據我們之前的討論，PE 高低以 15~20 為界，PB 以 1.5~2.0 為界
+const PE_THRESHOLD = 15; // 低於此值為 "Low PE"
+const PB_THRESHOLD = 2;  // 低於此值為 "Low PB"
+
+let rows = []; // 存放從 /api/view 載入的 *所有* 股票資料
 let sortState = { key: "PE", asc: true };
 
 function parseNum(v){ const n=Number(String(v||"").replace(/,/g,"").trim()); return isNaN(n)?NaN:n; }
 
+// 舊頁面(頁面1)的 render 函式
 function render(){
   $tbody.innerHTML = rows.map(r => `
     <tr>
@@ -148,6 +159,7 @@ function render(){
   `).join("");
 }
 
+// (sortBy 函式保持不變，用於頁面1)
 function sortBy(key){
   const asc = (sortState.key===key)?!sortState.asc:true;
   sortState = { key, asc };
@@ -166,6 +178,76 @@ function sortBy(key){
   render();
 }
 
+// --- 新增：渲染模型分析(頁面2)表格的函式 ---
+function renderModelTable(data) {
+  $modelTbody.innerHTML = data.map(r => `
+    <tr>
+      <td>${r["Code"] ?? ""}</td>
+      <td>${r["Name"] ?? ""}</td>
+      <td class="right">${r["PE"] ?? ""}</td>
+      <td class="right">${r["DividendYield(%)"] ?? ""}</td>
+      <td class="right">${r["PB"] ?? ""}</td>
+      <td>${r["FiscalYearQuarter"] ?? ""}</td>
+    </tr>
+  `).join("");
+}
+
+// --- 新增：執行模型分析的核心函式 ---
+function runAnalysis() {
+  // 1. 取得篩選器參數
+  const minPE = parseNum($peMin.value);
+  const maxPE = parseNum($peMax.value);
+  const quadrant = $quadrantSelect.value;
+  
+  // 2. 預先過濾 (Req 1: 排除 PE 範圍外的)
+  let baseData = rows.filter(stock => {
+    const pe = parseNum(stock["PE"]);
+    // 必須是有效的數字，且在範圍內
+    if (isNaN(pe)) return false; 
+    return pe >= minPE && pe <= maxPE;
+  });
+
+  // 3. 四象限過濾 (Req 2: 篩選象限)
+  let quadrantData = baseData.filter(stock => {
+    const pe = parseNum(stock["PE"]);
+    const pb = parseNum(stock["PB"]);
+
+    // 必須要有 PB 資料才能分象限
+    if (isNaN(pb)) return false; 
+
+    switch (quadrant) {
+      case "low-pe-low-pb":
+        return pe < PE_THRESHOLD && pb < PB_THRESHOLD;
+      case "low-pe-high-pb":
+        return pe < PE_THRESHOLD && pb >= PB_THRESHOLD;
+      case "high-pe-low-pb":
+        return pe >= PE_THRESHOLD && pb < PB_THRESHOLD;
+      case "high-pe-high-pb":
+        return pe >= PE_THRESHOLD && pb >= PB_THRESHOLD;
+      case "all":
+      default:
+        return true; // "all" 或其他狀況，回傳所有 baseData
+    }
+  });
+
+  // 4. 排序 (Req 2: 依殖利率高到低)
+  quadrantData.sort((a, b) => {
+    const yA = parseNum(a["DividendYield(%)"]);
+    const yB = parseNum(b["DividendYield(%)"]);
+
+    // 處理 NaN (沒殖利率的排在最後面)
+    if (isNaN(yA) && isNaN(yB)) return 0;
+    if (isNaN(yA)) return 1;
+    if (isNaN(yB)) return -1;
+    
+    return yB - yA; // (yB - yA = 由高到低)
+  });
+
+  // 5. 渲染結果
+  renderModelTable(quadrantData);
+}
+
+// (load 函式保持不變)
 async function load(){
   $status.textContent = "載入中…";
   
@@ -177,16 +259,17 @@ async function load(){
     "Code": d["Code"],
     "Name": d["Name"],
     "PE": d["PE"] || d["PEratio"],
-    "DividendYield(%)": d["DividendYield(%)"] || d["DividendYield"], // <-- 已修正 "Route" 錯字
+    "DividendYield(%)": d["DividendYield(%)"] || d["DividendYield"], 
     "PB": d["PB"] || d["PBratio"],
     "FiscalYearQuarter": d["FiscalYearQuarter"] || d["Date"]
   }));
-  sortBy("PE");
+
+  // 頁面1 的預設排序
+  sortBy("PE"); 
   $status.textContent = rows.length ? `共 ${rows.length} 檔 (點擊按鈕可更新)` : "目前無資料（可按上方按鈕更新）";
-  
 }
 
-// --- 立即更新按鈕 (簡化) ---
+// --- 立即更新按鈕 (修改：更新後也要重新執行分析) ---
 document.getElementById("refresh").addEventListener("click", async ()=>{
   const btn = document.getElementById("refresh");
   btn.disabled = true; $status.textContent = "更新中…";
@@ -194,7 +277,10 @@ document.getElementById("refresh").addEventListener("click", async ()=>{
     const res = await fetch("/api/push");
     const j = await res.json();
     if (!j.ok) throw new Error(j.error || "更新失敗");
-    await load();
+    
+    await load(); // 重新載入資料
+    runAnalysis(); // 重新執行分析
+    
     $status.textContent = `更新完成：寫入 ${j.bwibbu_count} 筆`; 
   } catch(err){
     $status.textContent = "更新失敗：" + err.message;
@@ -203,12 +289,13 @@ document.getElementById("refresh").addEventListener("click", async ()=>{
   }
 });
 
-// (表格排序事件保持不變)
-document.querySelectorAll("th[data-key]").forEach(th => th.addEventListener("click", () => sortBy(th.dataset.key)));
+// (頁面1 表格排序事件保持不變)
+document.querySelectorAll("#t th[data-key]").forEach(th => th.addEventListener("click", () => sortBy(th.dataset.key)));
 
+// --- 新增：模型分析按鈕的事件綁定 ---
+$filterButton.addEventListener('click', runAnalysis);
 
-// ========== 側邊欄 JS (保留，利於擴充) ==========
-
+// ========== 側邊欄 JS (保持不變) ==========
 const navLinks = document.querySelectorAll(".nav-link");
 const contentPages = document.querySelectorAll(".content-page");
 
@@ -233,9 +320,14 @@ navLinks.forEach(link => {
   });
 });
 
-// --- 程式啟動 ---
-load(); // 載入所有資料
-showPage("page-bwibbu"); // 預設顯示「本益比」頁面
+// --- 程式啟動 (修改：需改為 async 才能確保 load 完才 run) ---
+async function startup() {
+  await load(); // 1. 載入所有資料
+  showPage("page-bwibbu"); // 2. 預設顯示「本益比」頁面
+  runAnalysis(); // 3. 預先執行一次模型分析 (結果會顯示在隱藏的頁面2)
+}
+
+startup(); // 啟動
 
 </script>
 </body>
