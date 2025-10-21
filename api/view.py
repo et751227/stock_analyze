@@ -4,11 +4,7 @@ from http.server import BaseHTTPRequestHandler
 import gspread
 from google.oauth2.service_account import Credentials
 
-# --- 修改 ---
 def get_sh():
-    """
-    修改：取得整個 Spreadsheet 物件 (sh)，而不是單一工作表
-    """
     info = json.loads(os.environ["GOOGLE_CREDENTIALS_JSON"])
     scopes = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
     creds = Credentials.from_service_account_info(info, scopes=scopes)
@@ -16,13 +12,9 @@ def get_sh():
     sh = gc.open_by_key(os.environ["SHEET_ID"])
     return sh
 
-# --- 新增 ---
 def read_bwibbu_data(sh):
-    """
-    讀取本益比資料 (您原本的邏輯)
-    """
     ws = sh.worksheet("BWIBBU_d")
-    values = ws.get_all_values()  # 2D array: [ [header...], [row1...], ... ]
+    values = ws.get_all_values()
     if not values or len(values) < 2:
         return []
     
@@ -30,11 +22,11 @@ def read_bwibbu_data(sh):
     data = [dict(zip(header, r)) for r in values[1:]]
     return data
 
-# --- 新增 ---
+# --- (從這裡開始修改) ---
 def read_institutional_data(sh):
     """
     讀取三大法人買賣超資料
-    (此邏輯對應 push.py 寫入的格式)
+    (對應 push.py 的新寫入格式)
     """
     try:
         ws = sh.worksheet("三大法人買賣超")
@@ -42,17 +34,18 @@ def read_institutional_data(sh):
         # 讀取資料日期 (A1)
         inst_date = ws.acell('A1').value
         
-        # 讀取買超 (A4:C13)
-        buy_rows = ws.get('A4:C13')
+        # 讀取買超標題 (A4)
+        buy_header = ws.get('A4:C4')[0]
+        # 讀取買超資料 (A5:C14)
+        buy_rows = ws.get('A5:C14')
         
-        # 讀取賣超 (A17:C26)
-        sell_rows = ws.get('A17:C26')
+        # 讀取賣超標題 (A17)
+        sell_header = ws.get('A17:C17')[0]
+        # 讀取賣超資料 (A18:C27)
+        sell_rows = ws.get('A18:C27')
         
-        # 我們知道 push.py 寫入的欄位
-        header = ['證券代號', '證券名稱', '三大法人買賣超股數']
-        
-        buy_top10 = [dict(zip(header, r)) for r in buy_rows]
-        sell_top10 = [dict(zip(header, r)) for r in sell_rows]
+        buy_top10 = [dict(zip(buy_header, r)) for r in buy_rows]
+        sell_top10 = [dict(zip(sell_header, r)) for r in sell_rows]
         
         return {"date": inst_date, "buy_top10": buy_top10, "sell_top10": sell_top10}
         
@@ -62,20 +55,16 @@ def read_institutional_data(sh):
     except Exception as e:
         print(f"Error reading institutional data: {e}")
         return {"date": f"讀取錯誤: {e}", "buy_top10": [], "sell_top10": []}
+# --- (修改結束) ---
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
-            # --- 修改：一次取得 sh，然後分開讀取 ---
             sh = get_sh()
             
-            # 1. 讀取本益比資料
             bwibbu_data = read_bwibbu_data(sh)
-            
-            # 2. 讀取三大法人資料
             institutional_data = read_institutional_data(sh)
             
-            # 3. 組合回傳
             payload = {
                 "ok": True,
                 "bwibbu_data": bwibbu_data,
