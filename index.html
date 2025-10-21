@@ -6,50 +6,13 @@
   <title>個股分析 (TWSE)</title>
   
   <style>
-    body { 
-      font-family: system-ui, -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif; 
-      margin: 0; /* 移除 body 預設邊距 */
-      display: flex; /* 啟用 Flexbox 佈局 */
-      height: 100vh; /* 讓 body 佔滿整個視窗高度 */
-    }
-    
-    /* --- 側邊欄 (樹狀結構) 樣式 --- */
-    #sidebar {
-      width: 220px; /* 側邊欄寬度 */
-      background: #f7f7f7;
-      border-right: 1px solid #ddd;
-      padding: 20px;
-      box-sizing: border-box; /* 讓 padding 不會撐大寬度 */
-      flex-shrink: 0; /* 防止側邊欄在視窗縮小時被壓縮 */
-    }
-    #sidebar h3 {
-      margin-top: 0;
-    }
-    .nav-link {
-      display: block;
-      padding: 10px 15px;
-      text-decoration: none;
-      color: #333;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-    .nav-link:hover {
-      background: #e9e9e9;
-    }
-    .nav-link.active {
-      background: #007bff;
-      color: white;
-      font-weight: bold;
-    }
-
-    /* --- 主要內容區樣式 --- */
-    #main-content {
-      flex: 1; /* 佔滿所有剩餘空間 */
-      padding: 24px;
-      overflow-y: auto; /* 當內容過長時，只有這個區域會滾動 */
-    }
-
-    /* --- 共用樣式 (表格、提示文字等) --- */
+    body { font-family: system-ui, -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif; margin: 0; display: flex; height: 100vh; }
+    #sidebar { width: 220px; background: #f7f7f7; border-right: 1px solid #ddd; padding: 20px; box-sizing: border-box; flex-shrink: 0; }
+    #sidebar h3 { margin-top: 0; }
+    .nav-link { display: block; padding: 10px 15px; text-decoration: none; color: #333; border-radius: 6px; cursor: pointer; }
+    .nav-link:hover { background: #e9e9e9; }
+    .nav-link.active { background: #007bff; color: white; font-weight: bold; }
+    #main-content { flex: 1; padding: 24px; overflow-y: auto; }
     table { border-collapse: collapse; width: 100%; }
     th, td { padding: 10px 12px; border-bottom: 1px solid #eee; text-align: left; }
     th { cursor: pointer; user-select: none; position: sticky; top: 0; background: #fafafa; z-index: 1; }
@@ -57,21 +20,8 @@
     .hint { color: #666; font-size: 12px; margin-top: 8px; }
     .right { text-align: right; }
     hr { margin: 32px 0; border: 0; border-top: 1px solid #eee; }
-    .grid { display: flex; gap: 24px; flex-wrap: wrap; }
-    .grid-item { flex: 1; min-width: 300px; }
-
-    /* --- 可滾動的表格容器 (方案一) --- */
-    .table-container {
-      max-height: 600px; 
-      overflow-y: auto;
-      border: 1px solid #eee;
-      border-bottom: none;
-    }
-
-    /* --- 隱藏內容的輔助 class --- */
-    .hidden {
-      display: none;
-    }
+    .table-container { max-height: 600px; overflow-y: auto; border: 1px solid #eee; border-bottom: none; }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
@@ -79,20 +29,17 @@
   <nav id="sidebar">
     <h3>分析項目</h3>
     <a class="nav-link" data-target="page-bwibbu">本益比/殖利率</a>
-    <a class="nav-link" data-target="page-inst">三大法人買賣超</a>
-    
     </nav>
 
   <main id="main-content">
     
     <button id="refresh">立即更新（從 TWSE 抓寫到 Sheet）</button>
     <span id="status" style="margin-left:8px;color:#666;"></span>
-
     <hr>
 
     <div id="page-bwibbu" class="content-page">
       <h2>個股：本益比 / 殖利率 / 股價淨值比</h2>
-      <div class="hint">點擊欄位可排序（PE、殖利率、PB）。資料來源：TWSE OpenAPI（盤後/每日），僅供參考。</div>
+      <div class="hint">點擊欄位可排序。資料來源：TWSE OpenAPI（盤後/每日），僅供參考。</div>
       
       <div class="table-container">
         <table id="t">
@@ -101,9 +48,9 @@
               <th data-key="Code">代碼</th>
               <th data-key="Name">名稱</th>
               <th class="right" data-key="PE">PE</th>
-              <th class="right" data-key="Yield(%)">殖利率(%)</th>
+              <th class="right" data-key="DividendYield(%)">殖利率(%)</th>
               <th class="right" data-key="PB">PB</th>
-              <th data-key="Date">日期</th>
+              <th data-key="FiscalYearQuarter">資料季度</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -111,55 +58,18 @@
       </div>
     </div>
 
-    <div id="page-inst" class="content-page hidden">
-      <h2>三大法人買賣超 Top 10</h2>
-      <div id="inst-status" class="hint"></div>
-
-      <div class="grid">
-        <div class="grid-item">
-          <h3>買超前 10 名</h3>
-          <table id="t-buy">
-            <thead>
-              <tr>
-                <th>代碼</th>
-                <th>名稱</th>
-                <th class="right">買賣超股數</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-        <div class="grid-item">
-          <h3>賣超前 10 名</h3>
-          <table id="t-sell">
-            <thead>
-              <tr>
-                <th>代碼</th>
-                <th>名稱</th>
-                <th class="right">買賣超股數</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
     </main>
 
 
 <script>
-// --- DOM 選擇 (保持不變) ---
+// --- DOM 選擇 (簡化) ---
 const $tbody = document.querySelector("#t tbody");
 const $status = document.querySelector("#status");
-const $instStatus = document.querySelector("#inst-status");
-const $tbodyBuy = document.querySelector("#t-buy tbody");
-const $tbodySell = document.querySelector("#t-sell tbody");
+// (移除了 $instStatus, $tbodyBuy, $tbodySell)
 
 let rows = [];
 let sortState = { key: "PE", asc: true };
 
-// --- 渲染/排序/讀取 函式 (保持不變) ---
 function parseNum(v){ const n=Number(String(v||"").replace(/,/g,"").trim()); return isNaN(n)?NaN:n; }
 
 function render(){
@@ -168,38 +78,20 @@ function render(){
       <td>${r["Code"] ?? ""}</td>
       <td>${r["Name"] ?? ""}</td>
       <td class="right">${r["PE"] ?? ""}</td>
-      <td class="right">${r["Yield(%)"] ?? ""}</td>
+      <td class="right">${r["DividendYield(%)"] ?? ""}</td>
       <td class="right">${r["PB"] ?? ""}</td>
-      <td>${r["Date"] ?? ""}</td>
+      <td>${r["FiscalYearQuarter"] ?? ""}</td>
     </tr>
   `).join("");
 }
 
-function renderInstitutional(instData) {
-  $instStatus.textContent = instData.date;
-  
-  $tbodyBuy.innerHTML = instData.buy_top10.map(r => `
-    <tr>
-      <td>${r["證券代號"] ?? ""}</td>
-      <td>${r["證券名稱"] ?? ""}</td>
-      <td class="right">${parseNum(r["三大法人買賣超股數"]).toLocaleString('en-US')}</td>
-    </tr>
-  `).join("");
-  
-  $tbodySell.innerHTML = instData.sell_top10.map(r => `
-    <tr>
-      <td>${r["證券代號"] ?? ""}</td>
-      <td>${r["證券名稱"] ?? ""}</td>
-      <td class="right">${parseNum(r["三大法人買賣超股數"]).toLocaleString('en-US')}</td>
-    </tr>
-  `).join("");
-}
+// (移除了 renderInstitutional 函式)
 
 function sortBy(key){
   const asc = (sortState.key===key)?!sortState.asc:true;
   sortState = { key, asc };
   rows.sort((a,b)=>{
-    if(["PE","Yield(%)","PB"].includes(key)){
+    if(["PE","DividendYield(%)","PB"].includes(key)){ 
       const x=parseNum(a[key]), y=parseNum(b[key]);
       if (isNaN(x)&&isNaN(y)) return 0;
       if (isNaN(x)) return 1;
@@ -215,34 +107,27 @@ function sortBy(key){
 
 async function load(){
   $status.textContent = "載入中…";
-  $instStatus.textContent = "載入中…";
   
   const res = await fetch("/api/view");
   const j = await res.json();
   
-  // 1. 處理本益比資料 (不變)
-  const data_bwibbu = j.bwibbu_data || [];
+  // 1. 處理本益比資料 (簡化 JSON 結構)
+  const data_bwibbu = j.bwibbu_data || []; // 直接讀取 bwibbu_data
   rows = data_bwibbu.map(d => ({
     "Code": d["Code"],
     "Name": d["Name"],
     "PE": d["PE"] || d["PEratio"],
-    "Yield(%)": d["Yield(%)"] || d["Yield"],
+    "DividendYield(%)": d["DividendYield(%)"] || d["DividendYield"], 
     "PB": d["PB"] || d["PBratio"],
-    "Date": d["Date"]
+    "FiscalYearQuarter": d["FiscalYearQuarter"] || d["Date"]
   }));
   sortBy("PE");
-  $status.textContent = `共 ${rows.length} 檔 (點擊按鈕可更新)`;
-
-  // 2. 處理三大法人資料 (不變)
-  const data_inst = j.institutional_data;
-  if (data_inst) {
-    renderInstitutional(data_inst);
-  } else {
-    $instStatus.textContent = "查無三大法人資料";
-  }
+  $status.textContent = rows.length ? `共 ${rows.length} 檔 (點擊按鈕可更新)` : "目前無資料（可按上方按鈕更新）";
+  
+  // (移除了處理三大法人的邏輯)
 }
 
-// --- 立即更新按鈕 (保持不變) ---
+// --- 立即更新按鈕 (簡化) ---
 document.getElementById("refresh").addEventListener("click", async ()=>{
   const btn = document.getElementById("refresh");
   btn.disabled = true; $status.textContent = "更新中…";
@@ -251,7 +136,8 @@ document.getElementById("refresh").addEventListener("click", async ()=>{
     const j = await res.json();
     if (!j.ok) throw new Error(j.error || "更新失敗");
     await load();
-    $status.textContent = `更新完成：本益比 ${j.bwibbu_count} 筆 / 法人資料 ${j.institutional_date}`;
+    // 修改：簡化成功訊息
+    $status.textContent = `更新完成：寫入 ${j.bwibbu_count} 筆`; 
   } catch(err){
     $status.textContent = "更新失敗：" + err.message;
   } finally {
@@ -259,32 +145,19 @@ document.getElementById("refresh").addEventListener("click", async ()=>{
   }
 });
 
-// --- 本益比表格排序 (保持不變) ---
+// (表格排序事件保持不變)
 document.querySelectorAll("th[data-key]").forEach(th => th.addEventListener("click", () => sortBy(th.dataset.key)));
 
 
-// ========== 以下為新增的 JS 導覽邏輯 ==========
+// ========== 側邊欄 JS (保留，利於擴充) ==========
 
 const navLinks = document.querySelectorAll(".nav-link");
 const contentPages = document.querySelectorAll(".content-page");
 
-/**
- * 顯示指定的頁面，並隱藏其他頁面
- * @param {string} pageId - 要顯示的頁面 ID (例如 "page-bwibbu")
- */
 function showPage(pageId) {
-  // 1. 隱藏所有頁面
-  contentPages.forEach(page => {
-    page.classList.add("hidden");
-  });
-  
-  // 2. 顯示目標頁面
+  contentPages.forEach(page => { page.classList.add("hidden"); });
   const targetPage = document.getElementById(pageId);
-  if (targetPage) {
-    targetPage.classList.remove("hidden");
-  }
-
-  // 3. 更新側邊欄連結的 'active' 狀態
+  if (targetPage) { targetPage.classList.remove("hidden"); }
   navLinks.forEach(link => {
     if (link.dataset.target === pageId) {
       link.classList.add("active");
@@ -294,19 +167,14 @@ function showPage(pageId) {
   });
 }
 
-// 幫每一個側邊欄連結都綁定點擊事件
 navLinks.forEach(link => {
   link.addEventListener("click", (e) => {
-    e.preventDefault(); // 防止 <a> 標籤跳轉
+    e.preventDefault();
     const targetPageId = link.dataset.target;
     showPage(targetPageId);
   });
 });
 
-// --- 程式啟動時 ---
+// --- 程式啟動 ---
 load(); // 載入所有資料
-showPage("page-bwibbu"); // 預設顯示「本益比」頁面
-
-</script>
-</body>
-</html>
+showPage("page-
