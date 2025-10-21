@@ -1,64 +1,128 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>個股分析 (TWSE)</title>
-  
-  <style>
-    body { font-family: system-ui, -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif; margin: 0; display: flex; height: 100vh; }
-    #sidebar { width: 220px; background: #f7f7f7; border-right: 1px solid #ddd; padding: 20px; box-sizing: border-box; flex-shrink: 0; }
-    #sidebar h3 { margin-top: 0; }
-     .nav-link { display: block; padding: 10px 15px; text-decoration: none; color: #333; border-radius: 6px; cursor: pointer; }
-    .nav-link:hover { background: #e9e9e9; }
-    .nav-link.active { background: #007bff; color: white; font-weight: bold; }
-    #main-content { flex: 1; padding: 24px; overflow-y: auto; }
-    table { border-collapse: collapse; width: 100%; }
-    th, td { padding: 10px 12px; border-bottom: 1px solid #eee; text-align: left; }
-    th { cursor: pointer; user-select: none; position: sticky; top: 0; background: #fafafa; z-index: 1; }
-    tr:hover { background: #f8f8ff; }
-    .hint { color: #666; font-size: 12px; margin-top: 8px; }
-    .right { text-align: right; }
-    hr { margin: 32px 0; border: 0; border-top: 1px solid #eee; }
-    .table-container { max-height: 600px; overflow-y: auto; border: 1px solid #eee; border-bottom: none; }
-    .hidden { display: none; }
-  </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>個股分析 (TWSE)</title>
+  
+  <style>
+    body { 
+      font-family: system-ui, -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif; 
+      margin: 0; 
+      display: flex; 
+      height: 100vh; 
+    }
+    #sidebar { 
+      width: 220px; 
+      background: #f7f7f7; 
+      border-right: 1px solid #ddd; 
+      padding: 20px; 
+      box-sizing: border-box; 
+      flex-shrink: 0; 
+    }
+    #sidebar h3 { 
+      margin-top: 0; 
+    }
+    .nav-link { 
+      display: block; 
+      padding: 10px 15px; 
+      text-decoration: none; 
+      color: #333; 
+      border-radius: 6px; 
+      cursor: pointer; 
+    }
+    .nav-link:hover { 
+      background: #e9e9e9; 
+    }
+    .nav-link.active { 
+      background: #007bff; 
+      color: white; 
+      font-weight: bold; 
+    }
+    #main-content { 
+      flex: 1; 
+      padding: 24px; 
+      overflow-y: auto; 
+    }
+    table { 
+      border-collapse: collapse; 
+      width: 100%; 
+    }
+    th, td { 
+      padding: 10px 12px; 
+      border-bottom: 1px solid #eee; 
+      text-align: left; 
+    }
+    th { 
+      cursor: pointer; 
+      user-select: none; 
+      position: sticky; 
+      top: 0; 
+      background: #fafafa; 
+      z-index: 1; 
+    }
+    tr:hover { 
+      background: #f8f8ff; 
+    }
+    .hint { 
+      color: #666; 
+      font-size: 12px; 
+      margin-top: 8px; 
+    }
+    .right { 
+      text-align: right; 
+    }
+    hr { 
+      margin: 32px 0; 
+      border: 0; 
+      border-top: 1px solid #eee; 
+    }
+    .table-container { 
+      max-height: 600px; 
+      overflow-y: auto; 
+      border: 1px solid #eee; 
+      border-bottom: none; 
+    }
+    .hidden { 
+      display: none; 
+    }
+  </style>
 </head>
 <body>
 
-  <nav id="sidebar">
-    <h3>分析項目</h3>
-    <a class="nav-link" data-target="page-bwibbu">本益比/殖利率</a>
-  </nav>
+  <nav id="sidebar">
+    <h3>分析項目</h3>
+    <a class="nav-link" data-target="page-bwibbu">本益比/殖利率</a>
+  </nav>
 
-  <main id="main-content">
-    
-    <button id="refresh">立即更新（從 TWSE 抓寫到 Sheet）</button>
-    <span id="status" style="margin-left:8px;color:#666;"></span>
-    <hr>
+  <main id="main-content">
+    
+    <button id="refresh">立即更新（從 TWSE 抓寫到 Sheet）</button>
+    <span id="status" style="margin-left:8px;color:#666;"></span>
+    <hr>
 
-    <div id="page-bwibbu" class="content-page">
-      <h2>個股：本益比 / 殖利率 / 股價淨值比</h2>
-      <div class="hint">點擊欄位可排序。資料來源：TWSE OpenAPI（盤後/每日），僅供參考。</div>
-      
-      <div class="table-container">
-        <table id="t">
-          <thead>
-            <tr>
-              <th data-key="Code">代碼</th>
-              <th data-key="Name">名稱</th>
-              <th class="right" data-key="PE">PE</th>
-              <th class="right" data-key="DividendYield(%)">殖利率(%)</th>
-              <th class="right" data-key="PB">PB</th>
-              <th data-key="FiscalYearQuarter">資料季度</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
+    <div id="page-bwibbu" class="content-page">
+      <h2>個股：本益比 / 殖利率 / 股價淨值比</h2>
+      <div class="hint">點擊欄位可排序。資料來源：TWSE OpenAPI（盤後/每日），僅供參考。</div>
+      
+      <div class="table-container">
+        <table id="t">
+          <thead>
+            <tr>
+              <th data-key="Code">代碼</th>
+              <th data-key="Name">名稱</th>
+              <th class="right" data-key="PE">PE</th>
+              <th class="right" data-key="DividendYield(%)">殖利率(%)</th>
+              <th class="right" data-key="PB">PB</th>
+              <th data-key="FiscalYearQuarter">資料季度</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
 
-  </main>
+  </main>
 
 
 <script>
@@ -72,73 +136,71 @@ let sortState = { key: "PE", asc: true };
 function parseNum(v){ const n=Number(String(v||"").replace(/,/g,"").trim()); return isNaN(n)?NaN:n; }
 
 function render(){
-  $tbody.innerHTML = rows.map(r => `
-    <tr>
-      <td>${r["Code"] ?? ""}</td>
-      <td>${r["Name"] ?? ""}</td>
-      <td class="right">${r["PE"] ?? ""}</td>
-      <td class="right">${r["DividendYield(%)"] ?? ""}</td>
-      <td class="right">${r["PB"] ?? ""}</td>
-      <td>${r["FiscalYearQuarter"] ?? ""}</td>
-    </tr>
-  `).join("");
+  $tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${r["Code"] ?? ""}</td>
+      <td>${r["Name"] ?? ""}</td>
+      <td class="right">${r["PE"] ?? ""}</td>
+      <td class="right">${r["DividendYield(%)"] ?? ""}</td>
+      <td class="right">${r["PB"] ?? ""}</td>
+      <td>${r["FiscalYearQuarter"] ?? ""}</td>
+    </tr>
+  `).join("");
 }
 
 function sortBy(key){
-  const asc = (sortState.key===key)?!sortState.asc:true;
-  sortState = { key, asc };
-  rows.sort((a,b)=>{
-    if(["PE","DividendYield(%)","PB"].includes(key)){ 
-      const x=parseNum(a[key]), y=parseNum(b[key]);
-      if (isNaN(x)&&isNaN(y)) return 0;
-      if (isNaN(x)) return 1;
-      if (isNaN(y)) return -1;
-      return asc ? (x-y) : (y-x);
-    } else {
-      const x=(a[key]||"").toString(), y=(b[key]||"").toString();
-      return asc ? x.localeCompare(y,'zh-Hant') : y.localeCompare(x,'zh-Hant');
-    }
-  });
-  render();
+  const asc = (sortState.key===key)?!sortState.asc:true;
+  sortState = { key, asc };
+  rows.sort((a,b)=>{
+    if(["PE","DividendYield(%)","PB"].includes(key)){ 
+      const x=parseNum(a[key]), y=parseNum(b[key]);
+      if (isNaN(x)&&isNaN(y)) return 0;
+      if (isNaN(x)) return 1;
+      if (isNaN(y)) return -1;
+      return asc ? (x-y) : (y-x);
+    } else {
+      const x=(a[key]||"").toString(), y=(b[key]||"").toString();
+      return asc ? x.localeCompare(y,'zh-Hant') : y.localeCompare(x,'zh-Hant');
+    }
+  });
+  render();
 }
 
 async function load(){
-  $status.textContent = "載入中…";
-  
-  const res = await fetch("/api/view");
-  const j = await res.json();
-  
-  // 1. 處理本益比資料 (簡化 JSON 結構)
-  const data_bwibbu = j.bwibbu_data || []; // 直接讀取 bwibbu_data
-  rows = data_bwibbu.map(d => ({
-    "Code": d["Code"],
-    "Name": d["Name"],
-    "PE": d["PE"] || d["PEratio"],
-    "DividendYield(%)": d["DividendYield(%)"] || d["DividendYield"],Route
-    "PB": d["PB"] || d["PBratio"],
-    "FiscalYearQuarter": d["FiscalYearQuarter"] || d["Date"]
-  }));
-  sortBy("PE");
-  $status.textContent = rows.length ? `共 ${rows.length} 檔 (點擊按鈕可更新)` : "目前無資料（可按上方按鈕更新）";
-  
+  $status.textContent = "載入中…";
+  
+  const res = await fetch("/api/view");
+  const j = await res.json();
+  
+  const data_bwibbu = j.bwibbu_data || []; 
+  rows = data_bwibbu.map(d => ({
+    "Code": d["Code"],
+    "Name": d["Name"],
+    "PE": d["PE"] || d["PEratio"],
+    "DividendYield(%)": d["DividendYield(%)"] || d["DividendYield"], // <-- 已修正 "Route" 錯字
+    "PB": d["PB"] || d["PBratio"],
+    "FiscalYearQuarter": d["FiscalYearQuarter"] || d["Date"]
+  }));
+  sortBy("PE");
+  $status.textContent = rows.length ? `共 ${rows.length} 檔 (點擊按鈕可更新)` : "目前無資料（可按上方按鈕更新）";
+  
 }
 
 // --- 立即更新按鈕 (簡化) ---
 document.getElementById("refresh").addEventListener("click", async ()=>{
-  const btn = document.getElementById("refresh");
-  btn.disabled = true; $status.textContent = "更新中…";
-  try {
-    const res = await fetch("/api/push");
-    const j = await res.json();
-    if (!j.ok) throw new Error(j.error || "更新失敗");
-    await load();
-    // 修改：簡化成功訊息
-    $status.textContent = `更新完成：寫入 ${j.bwibbu_count} 筆`; 
-  } catch(err){
-    $status.textContent = "更新失敗：" + err.message;
-  } finally {
-    btn.disabled = false;
-  }
+  const btn = document.getElementById("refresh");
+  btn.disabled = true; $status.textContent = "更新中…";
+  try {
+    const res = await fetch("/api/push");
+    const j = await res.json();
+    if (!j.ok) throw new Error(j.error || "更新失敗");
+    await load();
+    $status.textContent = `更新完成：寫入 ${j.bwibbu_count} 筆`; 
+  } catch(err){
+    $status.textContent = "更新失敗：" + err.message;
+  } finally {
+    btn.disabled = false;
+  }
 });
 
 // (表格排序事件保持不變)
@@ -151,29 +213,29 @@ const navLinks = document.querySelectorAll(".nav-link");
 const contentPages = document.querySelectorAll(".content-page");
 
 function showPage(pageId) {
-  contentPages.forEach(page => { page.classList.add("hidden"); });
-  const targetPage = document.getElementById(pageId);
-  if (targetPage) { targetPage.classList.remove("hidden"); }
-  navLinks.forEach(link => {
-    if (link.dataset.target === pageId) {
-      link.classList.add("active");
-    } else {
-      link.classList.remove("active");
-    }
-  });
+  contentPages.forEach(page => { page.classList.add("hidden"); });
+  const targetPage = document.getElementById(pageId);
+  if (targetPage) { targetPage.classList.remove("hidden"); }
+  navLinks.forEach(link => {
+    if (link.dataset.target === pageId) {
+      link.classList.add("active");
+    } else {
+      link.classList.remove("active");
+    }
+  });
 }
 
 navLinks.forEach(link => {
-  link.addEventListener("click", (e) => {
-    e.preventDefault();
-    const targetPageId = link.dataset.target;
-    showPage(targetPageId);
-  });
+  link.addEventListener("click", (e) => {
+    e.preventDefault();
+    const targetPageId = link.dataset.target;
+    showPage(targetPageId);
+  });
 });
 
 // --- 程式啟動 ---
 load(); // 載入所有資料
-showPage("page-bwibbu"); // <-- 這裡是您被截斷的那一行
+showPage("page-bwibbu"); // 預設顯示「本益比」頁面
 
 </script>
 </body>
