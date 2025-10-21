@@ -41,7 +41,8 @@
   <nav id="sidebar">
     <h3>分析項目</h3>
     <a class="nav-link" data-target="page-bwibbu">本益比/殖利率</a>
-    <a class="nav-link" data-target="page-model">我的模型分析</a> <a class="nav-link" data-target="page-detail">個股查詢</a>
+    <a class="nav-link" data-target="page-model">我的模型分析</a>
+    <a class="nav-link" data-target="page-detail">個股查詢</a>
   </nav>
 
   <main id="main-content">
@@ -110,8 +111,7 @@
 
 
 <script>
-// (所有 JavaScript 程式碼都保持不變，因為它們是正確的)
-// --- DOM 選擇 ---
+// (DOM 選擇器和全域變數 保持不變)
 const $tbody = document.querySelector("#t-body"); 
 const $status = document.querySelector("#status");
 const $peMin = document.getElementById("pe-min");
@@ -122,17 +122,15 @@ const $modelTbody = document.getElementById("model-table-body");
 const $searchInput = document.getElementById("stock-search-input");
 const $autocompleteResults = document.getElementById("autocomplete-results");
 const $detailResults = document.getElementById("detail-results");
-
-// --- 全域變數 ---
 const PE_THRESHOLD = 15;
 const PB_THRESHOLD = 2;
 let rows = [];
 let sortState = { key: "PE", asc: true };
 
-// --- 輔助函式 ---
+// (輔助函式 parseNum 保持不變)
 function parseNum(v){ const n=Number(String(v||"").replace(/,/g,"").trim()); return isNaN(n)?NaN:n; }
 
-// --- 頁面1 相關函式 ---
+// (頁面1 render 函式 保持不變)
 function render(){
   $tbody.innerHTML = rows.map(r => `
     <tr><td>${r["Code"] ?? ""}</td><td>${r["Name"] ?? ""}</td>
@@ -140,8 +138,10 @@ function render(){
     <td class="right">${r["PB"] ?? ""}</td><td>${r["FiscalYearQuarter"] ?? ""}</td></tr>
   `).join("");
 }
+
+// ========== (修改處：修正 sortBy 函式內的錯字) ==========
 function sortBy(key){
-  const asc = (sortState.key===key)?!sortSate.asc:true;
+  const asc = (sortState.key === key) ? !sortState.asc : true; // <-- 修正錯字 sortSate -> sortState
   sortState = { key, asc };
   rows.sort((a,b)=>{
     if(["PE","DividendYield(%)","PB"].includes(key)){ 
@@ -156,8 +156,9 @@ function sortBy(key){
   });
   render();
 }
+// =======================================================
 
-// --- 頁面2 相關函式 ---
+// (頁面2 renderModelTable 函式 保持不變)
 function renderModelTable(data) {
   $modelTbody.innerHTML = data.map(r => `
     <tr><td>${r["Code"] ?? ""}</td><td>${r["Name"] ?? ""}</td>
@@ -165,6 +166,7 @@ function renderModelTable(data) {
     <td class="right">${r["PB"] ?? ""}</td><td>${r["FiscalYearQuarter"] ?? ""}</td></tr>
   `).join("");
 }
+// (頁面2 runAnalysis 函式 保持不變)
 function runAnalysis() {
   const minPE = parseNum($peMin.value);
   const maxPE = parseNum($peMax.value);
@@ -194,20 +196,14 @@ function runAnalysis() {
   renderModelTable(quadrantData);
 }
 
-// --- 頁面3 (個股查詢) 相關函式 ---
+// (頁面3 個股查詢相關函式 保持不變)
 function handleAutocomplete() {
   const query = $searchInput.value.trim().toLowerCase();
-  if (query.length === 0) {
-    $autocompleteResults.classList.add("hidden");
-    return;
-  }
+  if (query.length === 0) { $autocompleteResults.classList.add("hidden"); return; }
   const matches = rows.filter(stock => {
     return stock.Code.includes(query) || stock.Name.toLowerCase().includes(query);
   });
-  if (matches.length === 0) {
-    $autocompleteResults.classList.add("hidden");
-    return;
-  }
+  if (matches.length === 0) { $autocompleteResults.classList.add("hidden"); return; }
   $autocompleteResults.innerHTML = matches.slice(0, 10).map(stock => {
     const codeDisplay = stock.Code.replace(new RegExp(query, 'gi'), '<strong>$&</strong>');
     const nameDisplay = stock.Name.replace(new RegExp(query, 'gi'), '<strong>$&</strong>');
@@ -261,7 +257,7 @@ function renderStockDetails(data) {
   $detailResults.innerHTML = html;
 }
 
-// --- 系統啟動與事件綁定 ---
+// (系統啟動與事件綁定 保持不變)
 async function load(){
   $status.textContent = "載入中…";
   const res = await fetch("/api/view");
@@ -304,7 +300,7 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// (側邊欄 JS 邏輯)
+// (側邊欄 JS 邏輯 保持不變)
 const navLinks = document.querySelectorAll(".nav-link");
 const contentPages = document.querySelectorAll(".content-page");
 function showPage(pageId) {
@@ -327,7 +323,7 @@ navLinks.forEach(link => {
   });
 });
 
-// (啟動函式)
+// (啟動函式 保持不變)
 async function startup() {
   await load();
   showPage("page-bwibbu");
