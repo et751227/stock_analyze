@@ -26,52 +26,14 @@
     .filter-group label { font-weight: 500; }
     .filter-group input, .filter-group select, .filter-group button { padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
     .filter-group input { width: 60px; }
-    
-    /* --- 新增：個股查詢頁面樣式 --- */
-    .search-container {
-      position: relative;
-      width: 100%;
-      max-width: 500px;
-      margin-bottom: 16px;
-    }
-    #stock-search-input {
-      width: 100%;
-      padding: 12px;
-      font-size: 16px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      box-sizing: border-box; /* 確保 padding 不會撐爆寬度 */
-    }
-    #autocomplete-results {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      background: white;
-      border: 1px solid #ddd;
-      border-top: none;
-      max-height: 300px;
-      overflow-y: auto;
-      z-index: 100;
-    }
-    .autocomplete-item {
-      padding: 12px 15px;
-      cursor: pointer;
-    }
-    .autocomplete-item:hover {
-      background: #f0f0f0;
-    }
-    .autocomplete-item strong {
-      color: #007bff;
-    }
-    #detail-results table {
-      max-width: 600px;
-    }
-    #detail-results td:first-child {
-      font-weight: 500;
-      background: #fafafa;
-      width: 30%;
-    }
+    .search-container { position: relative; width: 100%; max-width: 500px; margin-bottom: 16px; }
+    #stock-search-input { width: 100%; padding: 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+    #autocomplete-results { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; border-top: none; max-height: 300px; overflow-y: auto; z-index: 100; }
+    .autocomplete-item { padding: 12px 15px; cursor: pointer; }
+    .autocomplete-item:hover { background: #f0f0f0; }
+    .autocomplete-item strong { color: #007bff; }
+    #detail-results table { max-width: 600px; }
+    #detail-results td:first-child { font-weight: 500; background: #fafafa; width: 30%; }
   </style>
 </head>
 <body>
@@ -79,8 +41,8 @@
   <nav id="sidebar">
     <h3>分析項目</h3>
     <a class="nav-link" data-target="page-bwibbu">本益比/殖利率</a>
-    <a class.nav-link" data-target="page-model">我的模型分析</a>
-    <a class="nav-link" data-target="page-detail">個股查詢</a> </nav>
+    <a class="nav-link" data-target="page-model">我的模型分析</a> <a class="nav-link" data-target="page-detail">個股查詢</a>
+  </nav>
 
   <main id="main-content">
     
@@ -107,13 +69,16 @@
 
     <div id="page-model" class="content-page hidden">
       <h2>我的模型分析 (四象限篩選)</h2>
+      <div class="hint">此模型會自動排除 PE 為 N/A 的股票，並依照殖利率(%)由高至低排序。</div>
       <div class="filter-group">
-        <label>PE 範圍：</label><input type="number" id="pe-min" value="0"><span>到</span><input type="number" id="pe-max" value="100">
-        <label style="margin-left: 16px;">四象限：</label>
+        <label for="pe-min">PE 範圍：</label><input type="number" id="pe-min" value="0"><span>到</span><input type="number" id="pe-max" value="100">
+        <label for="quadrant-select" style="margin-left: 16px;">四象限：</label>
         <select id="quadrant-select">
-          <option value="all">-- 全部顯示 --</option>
-          <option value="low-pe-low-pb">PE 低 / PB 低</option><option value="low-pe-high-pb">PE 低 / PB 高</option>
-          <option value="high-pe-low-pb">PE 高 / PB 低</option><option value="high-pe-high-pb">PE 高 / PB 高</option>
+          <option value="all">-- 全部顯示 (僅過濾PE範圍) --</option>
+          <option value="low-pe-low-pb">PE 低 / PB 低</option>
+          <option value="low-pe-high-pb">PE 低 / PB 高 (績優股)</option>
+          <option value="high-pe-low-pb">PE 高 / PB 低 (轉機股)</option>
+          <option value="high-pe-high-pb">PE 高 / PB 高 (成長股)</option>
         </select>
         <button id="filter-button" style="margin-left: 16px; background: #007bff; color: white; cursor: pointer;">開始分析</button>
       </div>
@@ -134,20 +99,19 @@
     <div id="page-detail" class="content-page hidden">
       <h2>個股查詢</h2>
       <div class="hint">輸入代碼或名稱 (例如 "2330" 或 "台積電")，系統會自動篩選。</div>
-      
       <div class="search-container">
         <input type="text" id="stock-search-input" placeholder="輸入代碼或名稱..." autocomplete="off">
         <div id="autocomplete-results" class="hidden"></div>
       </div>
-      
-      <div id="detail-results">
-        </div>
+      <div id="detail-results"></div>
     </div>
-    </main>
+
+  </main>
 
 
 <script>
-// --- DOM 選擇 (加入新頁面元素) ---
+// (所有 JavaScript 程式碼都保持不變，因為它們是正確的)
+// --- DOM 選擇 ---
 const $tbody = document.querySelector("#t-body"); 
 const $status = document.querySelector("#status");
 const $peMin = document.getElementById("pe-min");
@@ -155,8 +119,6 @@ const $peMax = document.getElementById("pe-max");
 const $quadrantSelect = document.getElementById("quadrant-select");
 const $filterButton = document.getElementById("filter-button");
 const $modelTbody = document.getElementById("model-table-body");
-
-// --- 新增：頁面3 的 DOM 選擇 ---
 const $searchInput = document.getElementById("stock-search-input");
 const $autocompleteResults = document.getElementById("autocomplete-results");
 const $detailResults = document.getElementById("detail-results");
@@ -164,13 +126,13 @@ const $detailResults = document.getElementById("detail-results");
 // --- 全域變數 ---
 const PE_THRESHOLD = 15;
 const PB_THRESHOLD = 2;
-let rows = []; // 存放 BWIBBU_d (1019 筆資料) 的全域快取
+let rows = [];
 let sortState = { key: "PE", asc: true };
 
-// --- 輔助函式 (保持不變) ---
+// --- 輔助函式 ---
 function parseNum(v){ const n=Number(String(v||"").replace(/,/g,"").trim()); return isNaN(n)?NaN:n; }
 
-// --- 頁面1 相關函式 (保持不變) ---
+// --- 頁面1 相關函式 ---
 function render(){
   $tbody.innerHTML = rows.map(r => `
     <tr><td>${r["Code"] ?? ""}</td><td>${r["Name"] ?? ""}</td>
@@ -179,7 +141,7 @@ function render(){
   `).join("");
 }
 function sortBy(key){
-  const asc = (sortState.key===key)?!sortState.asc:true;
+  const asc = (sortState.key===key)?!sortSate.asc:true;
   sortState = { key, asc };
   rows.sort((a,b)=>{
     if(["PE","DividendYield(%)","PB"].includes(key)){ 
@@ -195,7 +157,7 @@ function sortBy(key){
   render();
 }
 
-// --- 頁面2 相關函式 (保持不變) ---
+// --- 頁面2 相關函式 ---
 function renderModelTable(data) {
   $modelTbody.innerHTML = data.map(r => `
     <tr><td>${r["Code"] ?? ""}</td><td>${r["Name"] ?? ""}</td>
@@ -232,140 +194,74 @@ function runAnalysis() {
   renderModelTable(quadrantData);
 }
 
-// ========== 新增：頁面3 (個股查詢) 相關函式 ==========
-
-/**
- * 處理 Autocomplete 搜尋 (Req 2)
- */
+// --- 頁面3 (個股查詢) 相關函式 ---
 function handleAutocomplete() {
   const query = $searchInput.value.trim().toLowerCase();
-  
   if (query.length === 0) {
     $autocompleteResults.classList.add("hidden");
     return;
   }
-  
-  // 從 'rows' (全域快取) 中篩選
   const matches = rows.filter(stock => {
     return stock.Code.includes(query) || stock.Name.toLowerCase().includes(query);
   });
-  
   if (matches.length === 0) {
     $autocompleteResults.classList.add("hidden");
     return;
   }
-
-  // 只顯示前 10 筆
   $autocompleteResults.innerHTML = matches.slice(0, 10).map(stock => {
-    // 高亮顯示符合的字
     const codeDisplay = stock.Code.replace(new RegExp(query, 'gi'), '<strong>$&</strong>');
     const nameDisplay = stock.Name.replace(new RegExp(query, 'gi'), '<strong>$&</strong>');
-    // 將 'code' 和 'name' 存在 data-* 屬性中，方便點擊時抓取
-    return `
-      <div class="autocomplete-item" data-code="${stock.Code}" data-name="${stock.Name}">
-        ${codeDisplay} ${nameDisplay}
-      </div>
-    `;
+    return `<div class="autocomplete-item" data-code="${stock.Code}" data-name="${stock.Name}">${codeDisplay} ${nameDisplay}</div>`;
   }).join("");
-  
   $autocompleteResults.classList.remove("hidden");
 }
-
-/**
- * 處理點擊 Autocomplete 選單的項目
- * @param {Event} e - 點擊事件
- */
 function handleSelectStock(e) {
-  // 檢查是否點擊在 .autocomplete-item 上
   const item = e.target.closest('.autocomplete-item');
   if (!item) return;
-
   const code = item.dataset.code;
   const name = item.dataset.name;
-
-  $searchInput.value = `${code} ${name}`; // 將選定值填入輸入框
-  $autocompleteResults.classList.add("hidden"); // 隱藏選單
+  $searchInput.value = `${code} ${name}`;
+  $autocompleteResults.classList.add("hidden");
   $detailResults.innerHTML = `<p>正在查詢 ${name} (${code}) 的詳細資料...</p>`;
-  
-  // 執行查詢
   fetchStockDetails(code);
 }
-
-/**
- * 抓取並顯示個股詳細資訊 (Req 1 & 3)
- * @param {string} code - 股票代碼
- */
 async function fetchStockDetails(code) {
   try {
-    // 1. 從 'rows' 快取中找出基本資料 (PE/PB/Yield)
     const bwibbuData = rows.find(r => r.Code === code) || {};
-
-    // 2. 呼叫新的後端 API 抓取成交資訊 (Open/High/Low/Close)
     const res = await fetch(`/api/stock_detail?code=${code}`);
     const result = await res.json();
-    
     let twtauuData = {};
     if (res.ok && result.ok) {
       twtauuData = result.data;
     } else {
       console.error("抓取 TWTAUU 資料失敗:", result.error);
     }
-
-    // 3. 組合兩份資料
     const allData = { ...bwibbuData, ...twtauuData };
-
-    // 4. 顯示在畫面上 (Req 3)
     renderStockDetails(allData);
-
   } catch (err) {
     console.error("fetchStockDetails 失敗:", err);
     $detailResults.innerHTML = `<p style="color: red;">查詢失敗：${err.message}</p>`;
   }
 }
-
-/**
- * 將組合好的個股資料渲染成表格 (Req 3)
- * @param {object} data - 組合好的個股資料
- */
 function renderStockDetails(data) {
-  // 建立一個 key-value 對照表，方便顯示中文
   const fieldNames = {
-    "Code": "代碼",
-    "Name": "名稱",
-    "DividendYield(%)": "殖利率(%)",
-    "PE": "本益比 (PE)",
-    "PB": "股價淨值比 (PB)",
-    "FiscalYearQuarter": "資料季度 (PE/PB)",
-    "Open": "開盤價",
-    "High": "最高價",
-    "Low": "最低價",
-    "Close": "收盤價",
-    "Change": "漲跌",
-    "Transaction": "成交筆數",
-    "TradeValue": "成交金額",
-    "TradeVolume": "成交股數"
-    // 您可以從 TWTAUU API 繼續增加欄位
+    "Code": "代碼", "Name": "名稱", "DividendYield(%)": "殖利率(%)", "PE": "本益比 (PE)",
+    "PB": "股價淨值比 (PB)", "FiscalYearQuarter": "資料季度 (PE/PB)", "Open": "開盤價",
+    "High": "最高價", "Low": "最低價", "Close": "收盤價", "Change": "漲跌",
+    "Transaction": "成交筆數", "TradeValue": "成交金額", "TradeVolume": "成交股數"
   };
-
   let html = `<h3>${data.Name || 'N/A'} (${data.Code || 'N/A'}) 詳細資料</h3>
               <table><tbody>`;
-              
   for (const key in fieldNames) {
     if (data[key] !== undefined && data[key] !== "") {
-      html += `<tr>
-                <td>${fieldNames[key]}</td>
-                <td>${data[key]}</td>
-              </tr>`;
+      html += `<tr><td>${fieldNames[key]}</td><td>${data[key]}</td></tr>`;
     }
   }
-  
   html += `</tbody></table>`;
   $detailResults.innerHTML = html;
 }
 
-// ========== 系統啟動與事件綁定 ==========
-
-// (load 函式保持不變)
+// --- 系統啟動與事件綁定 ---
 async function load(){
   $status.textContent = "載入中…";
   const res = await fetch("/api/view");
@@ -382,8 +278,6 @@ async function load(){
   sortBy("PE"); 
   $status.textContent = rows.length ? `共 ${rows.length} 檔 (點擊按鈕可更新)` : "目前無資料（可按上方按鈕更新）";
 }
-
-// (refresh 按鈕事件 保持不變)
 document.getElementById("refresh").addEventListener("click", async ()=>{
   const btn = document.getElementById("refresh");
   btn.disabled = true; $status.textContent = "更新中…";
@@ -400,24 +294,17 @@ document.getElementById("refresh").addEventListener("click", async ()=>{
     btn.disabled = false;
   }
 });
-
-// (頁面1 排序事件 保持不變)
 document.querySelectorAll("#t th[data-key]").forEach(th => th.addEventListener("click", () => sortBy(th.dataset.key)));
-
-// (頁面2 按鈕事件 保持不變)
 $filterButton.addEventListener('click', runAnalysis);
-
-// --- 新增：頁面3 事件綁定 ---
 $searchInput.addEventListener('input', handleAutocomplete);
 $autocompleteResults.addEventListener('click', handleSelectStock);
-// (點擊空白處隱藏選單)
 document.addEventListener('click', (e) => {
   if (!$searchInput.contains(e.target)) {
     $autocompleteResults.classList.add('hidden');
   }
 });
 
-// (側邊欄 JS 邏輯 保持不變)
+// (側邊欄 JS 邏輯)
 const navLinks = document.querySelectorAll(".nav-link");
 const contentPages = document.querySelectorAll(".content-page");
 function showPage(pageId) {
@@ -440,7 +327,7 @@ navLinks.forEach(link => {
   });
 });
 
-// (啟動函式 保持不變)
+// (啟動函式)
 async function startup() {
   await load();
   showPage("page-bwibbu");
