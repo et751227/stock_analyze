@@ -12,12 +12,15 @@
     tr:hover { background: #f8f8ff; }
     .hint { color: #666; font-size: 12px; margin-top: 8px; }
     .right { text-align: right; }
+    /* --- 新增 --- */
+    hr { margin: 32px 0; border: 0; border-top: 1px solid #eee; }
+    .grid { display: flex; gap: 24px; flex-wrap: wrap; }
+    .grid-item { flex: 1; min-width: 300px; }
   </style>
 </head>
 <body>
   <h2>個股：本益比 / 殖利率 / 股價淨值比（TWSE OpenAPI）</h2>
 
-  <!-- 立即更新按鈕 -->
   <button id="refresh">立即更新（從 TWSE 抓寫到 Sheet）</button>
   <span id="status" style="margin-left:8px;color:#666;"></span>
 
@@ -37,14 +40,54 @@
     <tbody></tbody>
   </table>
 
-<script>
+  <hr>
+
+  <h2>三大法人買賣超 Top 10</h2>
+  <div id="inst-status" class="hint"></div>
+
+  <div class="grid">
+    <div class="grid-item">
+      <h3>買超前 10 名</h3>
+      <table id="t-buy">
+        <thead>
+          <tr>
+            <th>代碼</th>
+            <th>名稱</th>
+            <th class="right">買賣超股數</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    
+    <div class="grid-item">
+      <h3>賣超前 10 名</h3>
+      <table id="t-sell">
+        <thead>
+          <tr>
+            <th>代碼</th>
+            <th>名稱</th>
+            <th class="right">買賣超股數</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+  <script>
+// --- 修改：新增三大法人表格的 DOM 選擇 ---
 const $tbody = document.querySelector("#t tbody");
 const $status = document.querySelector("#status");
+const $instStatus = document.querySelector("#inst-status");
+const $tbodyBuy = document.querySelector("#t-buy tbody");
+const $tbodySell = document.querySelector("#t-sell tbody");
+
 let rows = [];
 let sortState = { key: "PE", asc: true };
 
 function parseNum(v){ const n=Number(String(v||"").replace(/,/g,"").trim()); return isNaN(n)?NaN:n; }
 
+// render() 函式 (本益比表格) 保持不變
 function render(){
   $tbody.innerHTML = rows.map(r => `
     <tr>
@@ -58,6 +101,28 @@ function render(){
   `).join("");
 }
 
+// --- 新增：渲染三大法人表格的函式 ---
+function renderInstitutional(instData) {
+  $instStatus.textContent = instData.date;
+  
+  $tbodyBuy.innerHTML = instData.buy_top10.map(r => `
+    <tr>
+      <td>${r["證券代號"] ?? ""}</td>
+      <td>${r["證券名稱"] ?? ""}</td>
+      <td class="right">${parseNum(r["三大法人買賣超股數"]).toLocaleString('en-US')}</td>
+    </tr>
+  `).join("");
+  
+  $tbodySell.innerHTML = instData.sell_top10.map(r => `
+    <tr>
+      <td>${r["證券代號"] ?? ""}</td>
+      <td>${r["證券名稱"] ?? ""}</td>
+      <td class="right">${parseNum(r["三大法人買賣超股數"]).toLocaleString('en-US')}</td>
+    </tr>
+  `).join("");
+}
+
+// sortBy() 函式 (本益比表格) 保持不變
 function sortBy(key){
   const asc = (sortState.key===key)?!sortState.asc:true;
   sortState = { key, asc };
@@ -76,12 +141,17 @@ function sortBy(key){
   render();
 }
 
+// --- 修改：load() 函式，處理新的 JSON 結構 ---
 async function load(){
   $status.textContent = "載入中…";
+  $instStatus.textContent = "載入中…"; // 新增
+  
   const res = await fetch("/api/view");
   const j = await res.json();
-  const data = j.data || [];
-  rows = data.map(d => ({
+  
+  // 1. 處理本益比資料 (舊邏輯)
+  const data_bwibbu = j.bwibbu_data || [];
+  rows = data_bwibbu.map(d => ({
     "Code": d["Code"],
     "Name": d["Name"],
     "PE": d["PE"] || d["PEratio"],
@@ -91,10 +161,19 @@ async function load(){
   }));
   sortBy("PE");
   $status.textContent = rows.length ? `共 ${rows.length} 檔` : "目前無資料（可按上方按鈕更新）";
+
+  // 2. 處理三大法人資料 (新邏輯)
+  const data_inst = j.institutional_data;
+  if (data_inst) {
+    renderInstitutional(data_inst);
+  } else {
+    $instStatus.textContent = "查無三大法人資料";
+  }
 }
 
 document.querySelectorAll("th[data-key]").forEach(th => th.addEventListener("click", () => sortBy(th.dataset.key)));
 
+// --- 修改：更新按鈕的成功訊息 ---
 document.getElementById("refresh").addEventListener("click", async ()=>{
   const btn = document.getElementById("refresh");
   btn.disabled = true; $status.textContent = "更新中…";
@@ -103,7 +182,10 @@ document.getElementById("refresh").addEventListener("click", async ()=>{
     const j = await res.json();
     if (!j.ok) throw new Error(j.error || "更新失敗");
     await load(); // 更新完成後重新讀取
-    $status.textContent = `更新完成：寫入 ${j.count} 筆`;
+    
+    // 修改：使用 push.py 回傳的新 JSON 格式
+    $status.textContent = `更新完成：本益比 ${j.bwibbu_count} 筆 / 法人資料 ${j.institutional_date}`;
+    
   } catch(err){
     $status.textContent = "更新失敗：" + err.message;
   } finally {
@@ -114,5 +196,4 @@ document.getElementById("refresh").addEventListener("click", async ()=>{
 load();
 </script>
 </body>
-
 </html>
