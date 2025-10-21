@@ -1,5 +1,6 @@
+# requirements.txt
 gspread==6.1.4
 google-auth==2.33.0
 requests==2.32.3
-pandas
-gspread-dataframe
+pandas==2.2.2
+gspread-dataframe==3.3.1
