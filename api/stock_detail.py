@@ -1,9 +1,13 @@
+# api/stock_detail.py
 import os, json, requests
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-# API 來源：TWTAUU - 個股日成交資訊 (包含開高低收、成交量)
-TWTAUU_URL = "https://openapi.twse.com.tw/v1/exchangeReport/TWTAUU"
+# --- (修改處) ---
+# 錯誤的 API: "https://openapi.twse.com.tw/v1/exchangeReport/TWTAUU"
+# 正確的 API 來源：STOCK_DAY_ALL (個股日收盤價(全部))
+STOCK_DAY_ALL_URL = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
+# --- (修改結束) ---
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -20,9 +24,8 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps(err_body).encode("utf-8"))
                 return
 
-            # 2. 呼叫 TWSE OpenAPI
-            # (注意：TWTAUU 必定是回傳 '所有' 上市公司資料，我們無法只查詢單一隻)
-            r = requests.get(TWTAUU_URL, timeout=20)
+            # 2. 呼叫 TWSE OpenAPI (使用修正後的 URL)
+            r = requests.get(STOCK_DAY_ALL_URL, timeout=20)
             r.raise_for_status()
             data = r.json()
 
@@ -45,7 +48,7 @@ class handler(BaseHTTPRequestHandler):
                 self.send_response(404)
                 self.send_header("content-type", "application/json; charset=utf-8")
                 self.end_headers()
-                err_body = {"ok": False, "error": f"在 TWTAUU API 中找不到代碼 {stock_code}"}
+                err_body = {"ok": False, "error": f"在 STOCK_DAY_ALL API 中找不到代碼 {stock_code}"}
                 self.wfile.write(json.dumps(err_body).encode("utf-8"))
 
         except Exception as e:
