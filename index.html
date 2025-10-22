@@ -36,16 +36,7 @@
     .autocomplete-item strong { color: #007bff; }
     #detail-results table { max-width: 600px; }
     #detail-results td:first-child { font-weight: 500; background: #fafafa; width: 30%; }
-    /* --- 新增：表格搜尋框樣式 --- */
-    .table-search {
-        padding: 8px 12px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        font-size: 14px;
-        width: 100%;
-        max-width: 300px;
-        box-sizing: border-box;
-    }
+    .table-search { padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; width: 100%; max-width: 300px; box-sizing: border-box; margin-bottom: 10px; /* 加一點下邊距 */ }
   </style>
 </head>
 <body>
@@ -67,9 +58,7 @@
     <div id="page-bwibbu" class="content-page">
       <h2>個股：本益比 / 殖利率 / 股價淨值比</h2>
       <div class="hint">此為 BWIBBU_d 資料表快照。點擊欄位可排序。</div>
-      
       <input type="text" id="bwibbu-search-input" class="table-search" placeholder="篩選代碼或名稱...">
-      
       <div class="table-container">
         <table id="t">
           <thead>
@@ -83,6 +72,7 @@
         </table>
       </div>
     </div>
+
     <div id="page-quadrant" class="content-page hidden"> 
       <h2>我的模型分析 (四象限篩選)</h2>
       <div class="filter-group">
@@ -96,9 +86,7 @@
         <button id="filter-button-quadrant" style="margin-left: 16px; background: #007bff; color: white; cursor: pointer;">開始分析</button> 
       </div>
       <div class="hint">此模型會自動排除無效資料(N/A)，並依照殖利率(%)由高至低排序。</div>
-      
       <input type="text" id="quadrant-search-input" class="table-search" placeholder="篩選代碼或名稱...">
-
       <div class="table-container">
         <table id="quadrant-table"> 
           <thead>
@@ -110,17 +98,54 @@
         </table>
       </div>
     </div>
+
     <div id="page-factor" class="content-page hidden">
+      <h2>我的模型分析 (多因子評分)</h2>
+      <div class="filter-group">
+        <label for="factor-pe-min">PE 範圍：</label> <input type="number" id="factor-pe-min" value="0"> <span>到</span> <input type="number" id="factor-pe-max" value="100">
+        <label for="factor-min-trade-value" style="margin-left: 16px;">最低成交金額(萬)：</label> <input type="number" id="factor-min-trade-value" value="5000">
+        <button id="filter-button-factor" style="margin-left: 16px; background: #007bff; color: white; cursor: pointer;">開始分析</button>
       </div>
+      <div class="hint">分析模型 = 價值(PE 40%, PB 30%) + 品質(殖利率 30%)。已排除無效及低流動性資料。</div>
+      <h3>最值得投資 Top 10 (分數最高)</h3>
+      <div class="table-container" style="max-height: 450px;">
+        <table id="factor-table-top">
+          <thead>
+            <tr>
+              <th>代碼</th><th>名稱</th><th class="right">模型總分</th><th class="right">殖利率(%)</th><th class="right">PE</th><th class="right">PB</th><th class="right">成交金額(億)</th>
+            </tr>
+          </thead>
+          <tbody id="factor-table-body-top"></tbody>
+        </table>
+      </div>
+      <h3 style="margin-top: 24px;">最不值得投資 Top 10 (分數最低)</h3>
+      <div class="table-container" style="max-height: 450px;">
+        <table id="factor-table-bottom">
+          <thead>
+            <tr>
+              <th>代碼</th><th>名稱</th><th class="right">模型總分</th><th class="right">殖利率(%)</th><th class="right">PE</th><th class="right">PB</th><th class="right">成交金額(億)</th>
+            </tr>
+          </thead>
+          <tbody id="factor-table-body-bottom"></tbody>
+        </table>
+      </div>
+    </div>
     
     <div id="page-detail" class="content-page hidden">
+      <h2>個股查詢</h2>
+      <div class="hint">輸入代碼或名稱 (例如 "2330" 或 "台積電")，系統會自動篩選。</div>
+      <div class="search-container">
+        <input type="text" id="stock-search-input" placeholder="輸入代碼或名稱..." autocomplete="off">
+        <div id="autocomplete-results" class="hidden"></div>
       </div>
+      <div id="detail-results"></div>
+    </div>
 
   </main>
 
 
 <script>
-// --- (DOM 選擇器和全域變數 保持不變) ---
+// --- (DOM 選擇器 - 確保所有 ID 都正確) ---
 const $tbody = document.querySelector("#t-body"); 
 const $bwibbuSearchInput = document.getElementById("bwibbu-search-input"); 
 const $peMinQuadrant = document.getElementById("pe-min");
@@ -128,7 +153,7 @@ const $peMaxQuadrant = document.getElementById("pe-max");
 const $minTradeValueQuadrant = document.getElementById("min-trade-value");
 const $quadrantSelect = document.getElementById("quadrant-select"); 
 const $filterButtonQuadrant = document.getElementById("filter-button-quadrant"); 
-const $quadrantSearchInput = document.getElementById("quadrant-search-input"); 
+const $quadrantSearchInput = document.getElementById("quadrant-search-input"); // <-- 確保 ID 對應 HTML
 const $quadrantTbody = document.getElementById("quadrant-table-body"); 
 const $peMinFactor = document.getElementById("factor-pe-min");
 const $peMaxFactor = document.getElementById("factor-pe-max");
@@ -139,46 +164,33 @@ const $factorTbodyBottom = document.getElementById("factor-table-body-bottom");
 const $searchInput = document.getElementById("stock-search-input");
 const $autocompleteResults = document.getElementById("autocomplete-results");
 const $detailResults = document.getElementById("detail-results");
+
+// --- (全域變數和輔助函式 保持不變) ---
 const PE_THRESHOLD = 15; 
 const PB_THRESHOLD = 2;  
 let rows = []; 
 let sortState = { key: "PE", asc: true };
-
-// --- 輔助函式 ---
 function parseNum(v){ const n=Number(String(v||"").replace(/,/g,"").trim()); return isNaN(n)?NaN:n; }
 
-// --- (修改：頁面1 render 函式 - 加入 Log) ---
+// --- (頁面1 相關函式 保持不變) ---
 function render(data = rows, query = "") {
-  console.log(`[render] Called with data length: ${data.length}, query: "${query}"`); // <-- Log 1
-
   let filteredData = data;
   const queryLower = query.trim().toLowerCase();
-  
   if (queryLower) {
     filteredData = data.filter(r => {
-      const codeStr = String(r.Code || '');
-      const nameStr = String(r.Name || '').toLowerCase();
+      const codeStr = String(r.Code || ''); const nameStr = String(r.Name || '').toLowerCase();
       return codeStr.includes(queryLower) || nameStr.includes(queryLower);
     });
   }
-  
-  console.log(`[render] Filtered data length: ${filteredData.length}`); // <-- Log 2
-
   $tbody.innerHTML = filteredData.map(r => `
     <tr><td>${r["Code"] ?? ""}</td><td>${r["Name"] ?? ""}</td>
     <td class="right">${r["PE"] ?? ""}</td><td class="right">${r["DividendYield(%)"] ?? ""}</td>
     <td class="right">${r["PB"] ?? ""}</td><td>${r["FiscalYearQuarter"] ?? ""}</td></tr>
   `).join("");
-    
-  console.log("[render] Render complete."); // <-- Log 3
 }
-
-// --- (修改：頁面1 sortBy 函式 - 加入 Log) ---
 function sortBy(key){
-  console.log(`[sortBy] Sorting by key: "${key}"`); // <-- Log 4
   const asc = (sortState.key === key) ? !sortState.asc : true; 
   sortState = { key, asc };
-  
   rows.sort((a,b)=>{
     if(["PE","DividendYield(%)","PB"].includes(key)){ 
       const x=parseNum(a[key]), y=parseNum(b[key]);
@@ -190,44 +202,32 @@ function sortBy(key){
       return asc ? x.localeCompare(y,'zh-Hant') : y.localeCompare(x,'zh-Hant');
     }
   });
-  
-  const currentQuery = $bwibbuSearchInput ? $bwibbuSearchInput.value : ""; // <-- 安全讀取
-  console.log(`[sortBy] Calling render with current query: "${currentQuery}"`); // <-- Log 5
+  const currentQuery = $bwibbuSearchInput ? $bwibbuSearchInput.value : "";
   render(rows, currentQuery); 
 }
 
-// --- (頁面2 renderQuadrantTable 函式 - 加入 Log) ---
+// --- (頁面2 相關函式 保持不變) ---
 function renderQuadrantTable(data, query = "") {
-  console.log(`[renderQuadrantTable] Called with data length: ${data.length}, query: "${query}"`); // <-- Log 6
   let filteredData = data;
   const queryLower = query.trim().toLowerCase();
-
   if (queryLower) {
     filteredData = data.filter(r => {
-      const codeStr = String(r.Code || '');
-      const nameStr = String(r.Name || '').toLowerCase();
+      const codeStr = String(r.Code || ''); const nameStr = String(r.Name || '').toLowerCase();
       return codeStr.includes(queryLower) || nameStr.includes(queryLower);
     });
   }
-  console.log(`[renderQuadrantTable] Filtered data length: ${filteredData.length}`); // <-- Log 7
-
   const formatTradeValue = (val) => { const num = parseNum(val); return isNaN(num) ? "N/A" : (num / 100000000).toFixed(2); };
   $quadrantTbody.innerHTML = filteredData.map(r => `
     <tr><td>${r["Code"] ?? ""}</td><td>${r["Name"] ?? ""}</td>
     <td class="right">${r["DividendYield(%)"] ?? ""}</td><td class="right">${r["PE"] ?? ""}</td>
     <td class="right">${r["PB"] ?? ""}</td><td class="right">${formatTradeValue(r["TradeValue"])}</td></tr>
   `).join("");
-  console.log("[renderQuadrantTable] Render complete."); // <-- Log 8
 }
-
-// --- (修改：頁面2 runQuadrantAnalysis 函式 - 加入 Log) ---
 function runQuadrantAnalysis() {
-  console.log("[runQuadrantAnalysis] Function called"); // <-- Log 9
   const minPE = parseNum($peMinQuadrant.value);
   const maxPE = parseNum($peMaxQuadrant.value);
   const minTradeValue = parseNum($minTradeValueQuadrant.value) * 10000;
   const quadrant = $quadrantSelect.value; 
-
   let universe = rows.filter(stock => {
       const pe = parseNum(stock["PE"]); const pb = parseNum(stock["PB"]);
       const yield = parseNum(stock["DividendYield(%)"]); const tradeValue = parseNum(stock["TradeValue"]);
@@ -235,7 +235,6 @@ function runQuadrantAnalysis() {
       if (tradeValue < minTradeValue) return false;
       return pe >= minPE && pe <= maxPE;
   });
-  
   let quadrantData = universe.filter(stock => {
       const pe = parseNum(stock["PE"]); const pb = parseNum(stock["PB"]);
       switch (quadrant) {
@@ -246,15 +245,12 @@ function runQuadrantAnalysis() {
           default: return true;
       }
   });
-
   quadrantData.sort((a, b) => {
       const yA = parseNum(a["DividendYield(%)"]); const yB = parseNum(b["DividendYield(%)"]);
       if (isNaN(yA) && isNaN(yB)) return 0; if (isNaN(yA)) return 1; if (isNaN(yB)) return -1;
       return yB - yA;
   });
-  
-  const currentQuery = $quadrantSearchInput ? $quadrantSearchInput.value : ""; // <-- 安全讀取
-  console.log(`[runQuadrantAnalysis] Calling renderQuadrantTable with data length: ${quadrantData.length}, query: "${currentQuery}"`); // <-- Log 10
+  const currentQuery = $quadrantSearchInput ? $quadrantSearchInput.value : "";
   renderQuadrantTable(quadrantData, currentQuery); 
 }
 
@@ -267,51 +263,95 @@ function handleAutocomplete() { /* ... */ }
 function handleSelectStock(e) { /* ... */ }
 function renderStockDetails(data) { /* ... */ }
 
-// --- (系統啟動與事件綁定) ---
+// --- 系統啟動與事件綁定 ---
 async function load(){
-  console.log("[load] Starting data fetch..."); // <-- Log 11
   const res = await fetch("/api/view"); 
   const j = await res.json();
   if (!j.ok) { console.error(`載入資料失敗: ${j.error}`); return; }
   rows = j.all_data || []; 
-  console.log(`[load] Data loaded, total rows: ${rows.length}`); // <-- Log 12
-  sortBy("PE"); // 觸發預設排序和渲染
+  sortBy("PE"); 
 }
 
-// (事件綁定保持不變)
-document.querySelectorAll("#t th[data-key]").forEach(th => th.addEventListener("click", () => sortBy(th.dataset.key)));
-$bwibbuSearchInput.addEventListener('input', () => {
-    console.log("[bwibbuSearchInput] Input event triggered"); // <-- Log 13
-    render(rows, $bwibbuSearchInput.value); 
-});
-$filterButtonQuadrant.addEventListener('click', runQuadrantAnalysis); 
-$quadrantSearchInput.addEventListener('input', () => {
-    console.log("[quadrantSearchInput] Input event triggered"); // <-- Log 14
-    runQuadrantAnalysis(); 
-});
-$filterButtonFactor.addEventListener('click', runFactorModelAnalysis);
-$searchInput.addEventListener('input', handleAutocomplete);
-$autocompleteResults.addEventListener('click', handleSelectStock);
-document.addEventListener('click', (e) => {
-  if (!$searchInput.contains(e.target)) {
-    $autocompleteResults.classList.add('hidden');
-  }
-});
+// (事件綁定 - 確保所有 addEventListener 都在 load 之後, 或者 DOMContentLoaded)
+// 我們將事件綁定移到 startup 函式內部，確保元素已存在
 
-// (側邊欄 JS 邏輯 保持不變)
 const navLinks = document.querySelectorAll(".nav-link");
 const contentPages = document.querySelectorAll(".content-page");
-function showPage(pageId) { /* ... */ }
-navLinks.forEach(link => { /* ... */ });
+function showPage(pageId) {
+  contentPages.forEach(page => { page.classList.add("hidden"); });
+  const targetPage = document.getElementById(pageId);
+  if (targetPage) { targetPage.classList.remove("hidden"); }
+  navLinks.forEach(link => {
+    if (link.dataset.target === pageId) {
+      link.classList.add("active");
+    } else {
+      link.classList.remove("active");
+    }
+  });
+}
+navLinks.forEach(link => {
+  link.addEventListener("click", (e) => {
+    e.preventDefault();
+    const targetPageId = link.dataset.target;
+    showPage(targetPageId);
+  });
+});
 
-// (啟動函式 保持不變)
 async function startup() {
-  console.log("[startup] Starting application..."); // <-- Log 15
-  await load();
+  await load(); // 等待資料載入完成
+  
+  // --- 確保 DOM 元素存在後再綁定事件 ---
+  document.querySelectorAll("#t th[data-key]").forEach(th => th.addEventListener("click", () => sortBy(th.dataset.key)));
+  
+  // 檢查元素是否存在，避免 null 錯誤
+  if ($bwibbuSearchInput) {
+      $bwibbuSearchInput.addEventListener('input', () => render(rows, $bwibbuSearchInput.value)); 
+  } else {
+      console.error("找不到元素: bwibbu-search-input");
+  }
+
+  if ($filterButtonQuadrant) {
+      $filterButtonQuadrant.addEventListener('click', runQuadrantAnalysis); 
+  } else {
+      console.error("找不到元素: filter-button-quadrant");
+  }
+  
+  // **** 錯誤發生點 ****
+  if ($quadrantSearchInput) { // <-- 加上檢查
+      $quadrantSearchInput.addEventListener('input', runQuadrantAnalysis); // Line 292 is likely here
+  } else {
+      console.error("找不到元素: quadrant-search-input"); // <-- 如果 HTML 真的沒有這個 ID, 這裡會報錯
+  }
+
+  if ($filterButtonFactor) {
+      $filterButtonFactor.addEventListener('click', runFactorModelAnalysis);
+  } else {
+      console.error("找不到元素: filter-button-factor");
+  }
+
+  if ($searchInput) {
+      $searchInput.addEventListener('input', handleAutocomplete);
+  } else {
+      console.error("找不到元素: stock-search-input");
+  }
+  
+  if ($autocompleteResults) {
+      $autocompleteResults.addEventListener('click', handleSelectStock);
+  } else {
+       console.error("找不到元素: autocomplete-results");
+  }
+
+  document.addEventListener('click', (e) => {
+    // 檢查 $searchInput 是否存在
+    if ($searchInput && !$searchInput.contains(e.target) && $autocompleteResults) {
+      $autocompleteResults.classList.add('hidden');
+    }
+  });
+  // --- 事件綁定結束 ---
+
   showPage("page-bwibbu"); 
   runQuadrantAnalysis(); 
   runFactorModelAnalysis(); 
-  console.log("[startup] Application started."); // <-- Log 16
 }
 startup();
 
