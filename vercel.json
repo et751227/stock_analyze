@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/push",
+      "schedule": "0 9 * * 1-5",
+      "maxDuration": 60
+    }
+  ]
+}
