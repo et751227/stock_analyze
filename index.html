@@ -120,15 +120,15 @@
 
 
 <script>
-// --- (DOM 選擇器更新) ---
+// --- (DOM 選擇器和全域變數 保持不變) ---
 const $tbody = document.querySelector("#t-body"); 
-const $bwibbuSearchInput = document.getElementById("bwibbu-search-input"); // <-- 新增
+const $bwibbuSearchInput = document.getElementById("bwibbu-search-input"); 
 const $peMinQuadrant = document.getElementById("pe-min");
 const $peMaxQuadrant = document.getElementById("pe-max");
 const $minTradeValueQuadrant = document.getElementById("min-trade-value");
 const $quadrantSelect = document.getElementById("quadrant-select"); 
 const $filterButtonQuadrant = document.getElementById("filter-button-quadrant"); 
-const $quadrantSearchInput = document.getElementById("quadrant-search-input"); // <-- 新增
+const $quadrantSearchInput = document.getElementById("quadrant-search-input"); 
 const $quadrantTbody = document.getElementById("quadrant-table-body"); 
 const $peMinFactor = document.getElementById("factor-pe-min");
 const $peMaxFactor = document.getElementById("factor-pe-max");
@@ -139,17 +139,18 @@ const $factorTbodyBottom = document.getElementById("factor-table-body-bottom");
 const $searchInput = document.getElementById("stock-search-input");
 const $autocompleteResults = document.getElementById("autocomplete-results");
 const $detailResults = document.getElementById("detail-results");
-
-// --- (全域變數和輔助函式 保持不變) ---
 const PE_THRESHOLD = 15; 
 const PB_THRESHOLD = 2;  
 let rows = []; 
 let sortState = { key: "PE", asc: true };
+
+// --- 輔助函式 ---
 function parseNum(v){ const n=Number(String(v||"").replace(/,/g,"").trim()); return isNaN(n)?NaN:n; }
 
-// --- (修改：頁面1 render 函式) ---
-// 加入 query 參數，並在渲染前進行篩選
+// --- (修改：頁面1 render 函式 - 加入 Log) ---
 function render(data = rows, query = "") {
+  console.log(`[render] Called with data length: ${data.length}, query: "${query}"`); // <-- Log 1
+
   let filteredData = data;
   const queryLower = query.trim().toLowerCase();
   
@@ -160,21 +161,24 @@ function render(data = rows, query = "") {
       return codeStr.includes(queryLower) || nameStr.includes(queryLower);
     });
   }
+  
+  console.log(`[render] Filtered data length: ${filteredData.length}`); // <-- Log 2
 
   $tbody.innerHTML = filteredData.map(r => `
     <tr><td>${r["Code"] ?? ""}</td><td>${r["Name"] ?? ""}</td>
     <td class="right">${r["PE"] ?? ""}</td><td class="right">${r["DividendYield(%)"] ?? ""}</td>
     <td class="right">${r["PB"] ?? ""}</td><td>${r["FiscalYearQuarter"] ?? ""}</td></tr>
   `).join("");
+    
+  console.log("[render] Render complete."); // <-- Log 3
 }
 
-// --- (修改：頁面1 sortBy 函式) ---
-// 排序後，使用當前的 search query 重新渲染
+// --- (修改：頁面1 sortBy 函式 - 加入 Log) ---
 function sortBy(key){
+  console.log(`[sortBy] Sorting by key: "${key}"`); // <-- Log 4
   const asc = (sortState.key === key) ? !sortState.asc : true; 
   sortState = { key, asc };
   
-  // 永遠對完整的 rows 排序
   rows.sort((a,b)=>{
     if(["PE","DividendYield(%)","PB"].includes(key)){ 
       const x=parseNum(a[key]), y=parseNum(b[key]);
@@ -187,13 +191,14 @@ function sortBy(key){
     }
   });
   
-  // 使用當前的搜尋框內容重新渲染
-  render(rows, $bwibbuSearchInput.value); 
+  const currentQuery = $bwibbuSearchInput ? $bwibbuSearchInput.value : ""; // <-- 安全讀取
+  console.log(`[sortBy] Calling render with current query: "${currentQuery}"`); // <-- Log 5
+  render(rows, currentQuery); 
 }
 
-// --- (修改：頁面2 renderQuadrantTable 函式) ---
-// 加入 query 參數，並在渲染前進行篩選
+// --- (頁面2 renderQuadrantTable 函式 - 加入 Log) ---
 function renderQuadrantTable(data, query = "") {
+  console.log(`[renderQuadrantTable] Called with data length: ${data.length}, query: "${query}"`); // <-- Log 6
   let filteredData = data;
   const queryLower = query.trim().toLowerCase();
 
@@ -204,6 +209,7 @@ function renderQuadrantTable(data, query = "") {
       return codeStr.includes(queryLower) || nameStr.includes(queryLower);
     });
   }
+  console.log(`[renderQuadrantTable] Filtered data length: ${filteredData.length}`); // <-- Log 7
 
   const formatTradeValue = (val) => { const num = parseNum(val); return isNaN(num) ? "N/A" : (num / 100000000).toFixed(2); };
   $quadrantTbody.innerHTML = filteredData.map(r => `
@@ -211,22 +217,45 @@ function renderQuadrantTable(data, query = "") {
     <td class="right">${r["DividendYield(%)"] ?? ""}</td><td class="right">${r["PE"] ?? ""}</td>
     <td class="right">${r["PB"] ?? ""}</td><td class="right">${formatTradeValue(r["TradeValue"])}</td></tr>
   `).join("");
+  console.log("[renderQuadrantTable] Render complete."); // <-- Log 8
 }
 
-// --- (修改：頁面2 runQuadrantAnalysis 函式) ---
-// 在最後渲染時傳入 search query
+// --- (修改：頁面2 runQuadrantAnalysis 函式 - 加入 Log) ---
 function runQuadrantAnalysis() {
+  console.log("[runQuadrantAnalysis] Function called"); // <-- Log 9
   const minPE = parseNum($peMinQuadrant.value);
   const maxPE = parseNum($peMaxQuadrant.value);
   const minTradeValue = parseNum($minTradeValueQuadrant.value) * 10000;
   const quadrant = $quadrantSelect.value; 
 
-  let universe = rows.filter(stock => {/* 清洗邏輯不變 */});
-  let quadrantData = universe.filter(stock => {/* 四象限篩選邏輯不變 */});
-  quadrantData.sort((a, b) => {/* 殖利率排序邏輯不變 */});
+  let universe = rows.filter(stock => {
+      const pe = parseNum(stock["PE"]); const pb = parseNum(stock["PB"]);
+      const yield = parseNum(stock["DividendYield(%)"]); const tradeValue = parseNum(stock["TradeValue"]);
+      if (isNaN(pe) || isNaN(pb) || isNaN(yield) || isNaN(tradeValue)) return false; 
+      if (tradeValue < minTradeValue) return false;
+      return pe >= minPE && pe <= maxPE;
+  });
   
-  // 使用當前的搜尋框內容渲染
-  renderQuadrantTable(quadrantData, $quadrantSearchInput.value); 
+  let quadrantData = universe.filter(stock => {
+      const pe = parseNum(stock["PE"]); const pb = parseNum(stock["PB"]);
+      switch (quadrant) {
+          case "low-pe-low-pb": return pe < PE_THRESHOLD && pb < PB_THRESHOLD;
+          case "low-pe-high-pb": return pe < PE_THRESHOLD && pb >= PB_THRESHOLD;
+          case "high-pe-low-pb": return pe >= PE_THRESHOLD && pb < PB_THRESHOLD;
+          case "high-pe-high-pb": return pe >= PE_THRESHOLD && pb >= PB_THRESHOLD;
+          default: return true;
+      }
+  });
+
+  quadrantData.sort((a, b) => {
+      const yA = parseNum(a["DividendYield(%)"]); const yB = parseNum(b["DividendYield(%)"]);
+      if (isNaN(yA) && isNaN(yB)) return 0; if (isNaN(yA)) return 1; if (isNaN(yB)) return -1;
+      return yB - yA;
+  });
+  
+  const currentQuery = $quadrantSearchInput ? $quadrantSearchInput.value : ""; // <-- 安全讀取
+  console.log(`[runQuadrantAnalysis] Calling renderQuadrantTable with data length: ${quadrantData.length}, query: "${currentQuery}"`); // <-- Log 10
+  renderQuadrantTable(quadrantData, currentQuery); 
 }
 
 // --- (頁面3 相關函式 保持不變) ---
@@ -240,29 +269,27 @@ function renderStockDetails(data) { /* ... */ }
 
 // --- (系統啟動與事件綁定) ---
 async function load(){
+  console.log("[load] Starting data fetch..."); // <-- Log 11
   const res = await fetch("/api/view"); 
   const j = await res.json();
   if (!j.ok) { console.error(`載入資料失敗: ${j.error}`); return; }
   rows = j.all_data || []; 
-  sortBy("PE"); // 預設排序並觸發 render()
+  console.log(`[load] Data loaded, total rows: ${rows.length}`); // <-- Log 12
+  sortBy("PE"); // 觸發預設排序和渲染
 }
 
-// (頁面1 排序事件 保持不變)
+// (事件綁定保持不變)
 document.querySelectorAll("#t th[data-key]").forEach(th => th.addEventListener("click", () => sortBy(th.dataset.key)));
-// (新增：頁面1 搜尋框事件)
 $bwibbuSearchInput.addEventListener('input', () => {
-    render(rows, $bwibbuSearchInput.value); // 使用當前搜尋值重新渲染頁面1
+    console.log("[bwibbuSearchInput] Input event triggered"); // <-- Log 13
+    render(rows, $bwibbuSearchInput.value); 
 });
-
-// (頁面2 按鈕事件 保持不變)
 $filterButtonQuadrant.addEventListener('click', runQuadrantAnalysis); 
-// (新增：頁面2 搜尋框事件)
-$quadrantSearchInput.addEventListener('input', runQuadrantAnalysis); // 打字時重新執行分析+篩選
-
-// (頁面3 按鈕事件 保持不變)
+$quadrantSearchInput.addEventListener('input', () => {
+    console.log("[quadrantSearchInput] Input event triggered"); // <-- Log 14
+    runQuadrantAnalysis(); 
+});
 $filterButtonFactor.addEventListener('click', runFactorModelAnalysis);
-
-// (頁面4 事件綁定 保持不變)
 $searchInput.addEventListener('input', handleAutocomplete);
 $autocompleteResults.addEventListener('click', handleSelectStock);
 document.addEventListener('click', (e) => {
@@ -279,10 +306,12 @@ navLinks.forEach(link => { /* ... */ });
 
 // (啟動函式 保持不變)
 async function startup() {
+  console.log("[startup] Starting application..."); // <-- Log 15
   await load();
   showPage("page-bwibbu"); 
   runQuadrantAnalysis(); 
   runFactorModelAnalysis(); 
+  console.log("[startup] Application started."); // <-- Log 16
 }
 startup();
 
