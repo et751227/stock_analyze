@@ -138,10 +138,9 @@ function render(){
     <td class="right">${r["PB"] ?? ""}</td><td>${r["FiscalYearQuarter"] ?? ""}</td></tr>
   `).join("");
 }
-
-// ========== (修改處：修正 sortBy 函式內的錯字) ==========
+// (頁面1 sortBy 函式 保持不變)
 function sortBy(key){
-  const asc = (sortState.key === key) ? !sortState.asc : true; // <-- 修正錯字 sortSate -> sortState
+  const asc = (sortState.key === key) ? !sortState.asc : true;
   sortState = { key, asc };
   rows.sort((a,b)=>{
     if(["PE","DividendYield(%)","PB"].includes(key)){ 
@@ -156,7 +155,6 @@ function sortBy(key){
   });
   render();
 }
-// =======================================================
 
 // (頁面2 renderModelTable 函式 保持不變)
 function renderModelTable(data) {
@@ -196,7 +194,7 @@ function runAnalysis() {
   renderModelTable(quadrantData);
 }
 
-// (頁面3 個股查詢相關函式 保持不變)
+// (頁面3 handleAutocomplete, handleSelectStock, fetchStockDetails 函式 保持不變)
 function handleAutocomplete() {
   const query = $searchInput.value.trim().toLowerCase();
   if (query.length === 0) { $autocompleteResults.classList.add("hidden"); return; }
@@ -230,7 +228,7 @@ async function fetchStockDetails(code) {
     if (res.ok && result.ok) {
       twtauuData = result.data;
     } else {
-      console.error("抓取 TWTAUU 資料失敗:", result.error);
+      console.error("抓取 STOCK_DAY_ALL 資料失敗:", result.error);
     }
     const allData = { ...bwibbuData, ...twtauuData };
     renderStockDetails(allData);
@@ -239,23 +237,50 @@ async function fetchStockDetails(code) {
     $detailResults.innerHTML = `<p style="color: red;">查詢失敗：${err.message}</p>`;
   }
 }
+
+// ========== (修改處：renderStockDetails 函式) ==========
 function renderStockDetails(data) {
-  const fieldNames = {
-    "Code": "代碼", "Name": "名稱", "DividendYield(%)": "殖利率(%)", "PE": "本益比 (PE)",
-    "PB": "股價淨值比 (PB)", "FiscalYearQuarter": "資料季度 (PE/PB)", "Open": "開盤價",
-    "High": "最高價", "Low": "最低價", "Close": "收盤價", "Change": "漲跌",
-    "Transaction": "成交筆數", "TradeValue": "成交金額", "TradeVolume": "成交股數"
+  // 建立一個 key-value 對照表
+  // Key 是我們想要的中文標題
+  // Value 是 API JSON 中的原始 Key (包含兩種 API 來源)
+  const fieldMapping = {
+    "代碼": "Code",
+    "名稱": "Name",
+    "殖利率(%)": "DividendYield(%)", // 來自 bwibbuData
+    "本益比 (PE)": "PE", // 來自 bwibbuData
+    "股價淨值比 (PB)": "PB", // 來自 bwibbuData
+    "資料季度 (PE/PB)": "FiscalYearQuarter", // 來自 bwibbuData
+    "開盤價": "OpeningPrice", // <-- 修正
+    "最高價": "HighestPrice", // <-- 修正
+    "最低價": "LowestPrice",  // <-- 修正
+    "收盤價": "ClosingPrice", // <-- 修正
+    "漲跌": "Change",
+    "成交筆數": "Transaction",
+    "成交金額": "TradeValue",
+    "成交股數": "TradeVolume"
   };
+
   let html = `<h3>${data.Name || 'N/A'} (${data.Code || 'N/A'}) 詳細資料</h3>
               <table><tbody>`;
-  for (const key in fieldNames) {
-    if (data[key] !== undefined && data[key] !== "") {
-      html += `<tr><td>${fieldNames[key]}</td><td>${data[key]}</td></tr>`;
+              
+  // 遍歷我們的中文標題 (fieldMapping)
+  for (const title in fieldMapping) {
+    const apiKey = fieldMapping[title]; // 取得對應的 API Key
+    const value = data[apiKey];         // 用 API Key 去 data 裡取值
+    
+    // 檢查值是否存在
+    if (value !== undefined && value !== "") {
+      html += `<tr>
+                <td>${title}</td>
+                <td>${value}</td>
+              </tr>`;
     }
   }
+  
   html += `</tbody></table>`;
   $detailResults.innerHTML = html;
 }
+// ========== (修改結束) ==========
 
 // (系統啟動與事件綁定 保持不變)
 async function load(){
@@ -283,7 +308,7 @@ document.getElementById("refresh").addEventListener("click", async ()=>{
     if (!j.ok) throw new Error(j.error || "更新失敗");
     await load();
     runAnalysis();
-    $status.textContent = `更新完成：寫入 ${j.bwibbu_count} 筆`; 
+    $status.textContent = `更新完成：寫入 ${j.bwibbu_count} 筆，日成交 ${j.stock_day_count} 筆`; 
   } catch(err){
     $status.textContent = "更新失敗：" + err.message;
   } finally {
