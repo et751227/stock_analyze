@@ -153,7 +153,7 @@ const $quadrantTbody = document.getElementById("quadrant-table-body");
 const $peMinFactor = document.getElementById("factor-pe-min");
 const $peMaxFactor = document.getElementById("factor-pe-max");
 const $minTradeValueFactor = document.getElementById("factor-min-trade-value");
-const $filterButtonFactor = document.getElementById("filter-button-factor"); // <-- JS 會在這裡找按鈕
+const $filterButtonFactor = document.getElementById("filter-button-factor");
 const $factorTbodyTop = document.getElementById("factor-table-body-top"); 
 const $factorTbodyBottom = document.getElementById("factor-table-body-bottom");
 const $searchInput = document.getElementById("stock-search-input");
@@ -176,7 +176,7 @@ function render(){
   `).join("");
 }
 function sortBy(key){
-  const asc = (sortState.key === key) ? !sortState.asc : true; // <-- 已修正
+  const asc = (sortState.key === key) ? !sortState.asc : true; 
   sortState = { key, asc };
   rows.sort((a,b)=>{
     if(["PE","DividendYield(%)","PB"].includes(key)){ 
@@ -281,9 +281,77 @@ function runFactorModelAnalysis() {
 }
 
 // --- 頁面4 (個股查詢) 相關函式 ---
-function handleAutocomplete() { /* ... */ }
-function handleSelectStock(e) { /* ... */ }
-function renderStockDetails(data) { /* ... */ }
+
+// ========== (加入 console.log 偵錯) ==========
+function handleAutocomplete() {
+  console.log("handleAutocomplete function called"); // <-- 偵錯點 1
+
+  const query = $searchInput.value.trim().toLowerCase();
+  
+  if (query.length === 0) {
+    $autocompleteResults.classList.add("hidden");
+    return;
+  }
+  
+  const matches = rows.filter(stock => {
+    const codeStr = String(stock.Code || '');
+    const nameStr = String(stock.Name || '').toLowerCase();
+    return codeStr.includes(query) || nameStr.includes(query);
+  });
+  
+  console.log("Search query:", query, "Matches found:", matches.length); // <-- 偵錯點 2
+
+  if (matches.length === 0) {
+    $autocompleteResults.classList.add("hidden");
+    return;
+  }
+
+  $autocompleteResults.innerHTML = matches.slice(0, 10).map(stock => {
+    const codeDisplay = String(stock.Code || '').replace(new RegExp(query, 'gi'), '<strong>$&</strong>');
+    const nameDisplay = String(stock.Name || '').replace(new RegExp(query, 'gi'), '<strong>$&</strong>');
+    return `<div class="autocomplete-item" data-code="${stock.Code}" data-name="${stock.Name}">${codeDisplay} ${nameDisplay}</div>`;
+  }).join("");
+  
+  console.log("Generated HTML:", $autocompleteResults.innerHTML.length > 0); // <-- 偵錯點 3
+  
+  $autocompleteResults.classList.remove("hidden");
+  console.log("Removed 'hidden' class from autocomplete results"); // <-- 偵錯點 4
+}
+// ========== (修改結束) ==========
+
+function handleSelectStock(e) {
+  const item = e.target.closest('.autocomplete-item');
+  if (!item) return;
+  const code = item.dataset.code;
+  const name = item.dataset.name;
+  $searchInput.value = `${code} ${name}`;
+  $autocompleteResults.classList.add("hidden");
+  $detailResults.innerHTML = `<p>正在查詢 ${name} (${code}) 的詳細資料...</p>`;
+  const allData = rows.find(r => r.Code === code) || {};
+  renderStockDetails(allData);
+}
+function renderStockDetails(data) {
+  const fieldMapping = {
+    "代碼": "Code", "名稱": "Name",
+    "殖利率(%)": "DividendYield(%)", "本益比 (PE)": "PE",
+    "股價淨值比 (PB)": "PB", "資料季度 (PE/PB)": "FiscalYearQuarter",
+    "開盤價": "OpeningPrice", "最高價": "HighestPrice",
+    "最低價": "LowestPrice", "收盤價": "ClosingPrice",
+    "漲跌": "Change", "成交筆數": "Transaction",
+    "成交金額": "TradeValue", "成交股數": "TradeVolume"
+  };
+  let html = `<h3>${data.Name || 'N/A'} (${data.Code || 'N/A'}) 詳細資料</h3>
+              <table><tbody>`;
+  for (const title in fieldMapping) {
+    const apiKey = fieldMapping[title];
+    const value = data[apiKey];
+    if (value !== undefined && value !== "") {
+      html += `<tr><td>${title}</td><td>${value}</td></tr>`;
+    }
+  }
+  html += `</tbody></table>`;
+  $detailResults.innerHTML = html;
+}
 
 // --- 系統啟動與事件綁定 ---
 async function load(){
@@ -294,12 +362,11 @@ async function load(){
   sortBy("PE"); 
 }
 
-// (移除了 refresh 按鈕事件)
-
+// (事件綁定保持不變)
 document.querySelectorAll("#t th[data-key]").forEach(th => th.addEventListener("click", () => sortBy(th.dataset.key)));
 $filterButtonQuadrant.addEventListener('click', runQuadrantAnalysis); 
 $filterButtonFactor.addEventListener('click', runFactorModelAnalysis);
-$searchInput.addEventListener('input', handleAutocomplete);
+$searchInput.addEventListener('input', handleAutocomplete); // <-- 綁定 handleAutocomplete
 $autocompleteResults.addEventListener('click', handleSelectStock);
 document.addEventListener('click', (e) => {
   if (!$searchInput.contains(e.target)) {
@@ -307,6 +374,7 @@ document.addEventListener('click', (e) => {
   }
 });
 
+// (側邊欄 JS 邏輯 保持不變)
 const navLinks = document.querySelectorAll(".nav-link");
 const contentPages = document.querySelectorAll(".content-page");
 function showPage(pageId) {
@@ -329,6 +397,7 @@ navLinks.forEach(link => {
   });
 });
 
+// (啟動函式 保持不變)
 async function startup() {
   await load();
   showPage("page-bwibbu"); 
