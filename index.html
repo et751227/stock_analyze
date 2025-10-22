@@ -9,22 +9,11 @@
     body { font-family: system-ui, -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif; margin: 0; display: flex; height: 100vh; }
     #sidebar { width: 220px; background: #f7f7f7; border-right: 1px solid #ddd; padding: 20px; box-sizing: border-box; flex-shrink: 0; }
     #sidebar h3 { margin-top: 0; }
-    /* --- 修改：增加父層樣式 --- */
-    .nav-parent {
-      margin-top: 15px;
-      margin-bottom: 5px;
-      color: #666;
-      font-weight: bold;
-      padding-left: 15px; /* 與連結對齊 */
-    }
+    .nav-parent { margin-top: 15px; margin-bottom: 5px; color: #666; font-weight: bold; padding-left: 15px; }
     .nav-link { display: block; padding: 10px 15px; text-decoration: none; color: #333; border-radius: 6px; cursor: pointer; }
     .nav-link:hover { background: #e9e9e9; }
     .nav-link.active { background: #007bff; color: white; font-weight: bold; }
-    /* --- 新增：子層連結縮排 --- */
-    .nav-link.child {
-      padding-left: 30px; /* 增加左邊距 */
-    }
-    
+    .nav-link.child { padding-left: 30px; }
     #main-content { flex: 1; padding: 24px; overflow-y: auto; }
     table { border-collapse: collapse; width: 100%; }
     th, td { padding: 10px 12px; border-bottom: 1px solid #eee; text-align: left; }
@@ -54,11 +43,9 @@
   <nav id="sidebar">
     <h3>分析項目</h3>
     <a class="nav-link" data-target="page-bwibbu">本益比/殖利率</a>
-    
     <div class="nav-parent">我的模型分析</div> 
     <a class="nav-link child" data-target="page-quadrant">四象限篩選</a> 
     <a class="nav-link child" data-target="page-factor">多因子模型</a>
-    
     <a class="nav-link" data-target="page-detail" style="margin-top: 15px;">個股查詢</a> 
   </nav>
 
@@ -68,11 +55,24 @@
     <hr>
 
     <div id="page-bwibbu" class="content-page">
+      <h2>個股：本益比 / 殖利率 / 股價淨值比</h2>
+      <div class="hint">此為 BWIBBU_d 資料表快照。點擊欄位可排序。</div>
+      <div class="table-container">
+        <table id="t">
+          <thead>
+            <tr>
+              <th data-key="Code">代碼</th><th data-key="Name">名稱</th><th class="right" data-key="PE">PE</th>
+              <th class="right" data-key="DividendYield(%)">殖利率(%)</th><th class="right" data-key="PB">PB</th>
+              <th data-key="FiscalYearQuarter">資料季度</th>
+            </tr>
+          </thead>
+          <tbody id="t-body"></tbody>
+        </table>
       </div>
+    </div>
 
     <div id="page-quadrant" class="content-page hidden"> 
       <h2>我的模型分析 (四象限篩選)</h2>
-      
       <div class="filter-group">
         <label for="pe-min">PE 範圍：</label> <input type="number" id="pe-min" value="0"> <span>到</span> <input type="number" id="pe-max" value="100">
         <label for="min-trade-value" style="margin-left: 16px;">最低成交金額(萬)：</label> <input type="number" id="min-trade-value" value="5000">
@@ -84,7 +84,6 @@
         <button id="filter-button-quadrant" style="margin-left: 16px; background: #007bff; color: white; cursor: pointer;">開始分析</button> 
       </div>
       <div class="hint">此模型會自動排除無效資料(N/A)，並依照殖利率(%)由高至低排序。</div>
-      
       <div class="table-container">
         <table id="quadrant-table"> 
           <thead>
@@ -96,16 +95,15 @@
         </table>
       </div>
     </div>
+
     <div id="page-factor" class="content-page hidden">
       <h2>我的模型分析 (多因子評分)</h2>
-
       <div class="filter-group">
         <label for="factor-pe-min">PE 範圍：</label> <input type="number" id="factor-pe-min" value="0"> <span>到</span> <input type="number" id="factor-pe-max" value="100">
         <label for="factor-min-trade-value" style="margin-left: 16px;">最低成交金額(萬)：</label> <input type="number" id="factor-min-trade-value" value="5000">
         <button id="filter-button-factor" style="margin-left: 16px; background: #007bff; color: white; cursor: pointer;">開始分析</button>
       </div>
       <div class="hint">分析模型 = 價值(PE 40%, PB 30%) + 品質(殖利率 30%)。已排除無效及低流動性資料。</div>
-
       <h3>最值得投資 Top 10 (分數最高)</h3>
       <div class="table-container" style="max-height: 450px;">
         <table id="factor-table-top">
@@ -129,74 +127,117 @@
         </table>
       </div>
     </div>
+    
     <div id="page-detail" class="content-page hidden">
       <h2>個股查詢</h2>
+      <div class="hint">輸入代碼或名稱 (例如 "2330" 或 "台積電")，系統會自動篩選。</div>
+      <div class="search-container">
+        <input type="text" id="stock-search-input" placeholder="輸入代碼或名稱..." autocomplete="off">
+        <div id="autocomplete-results" class="hidden"></div>
       </div>
+      <div id="detail-results"></div>
+    </div>
 
   </main>
 
 
 <script>
-// --- (DOM 選擇器更新) ---
+// --- (DOM 選擇器和全域變數 保持不變) ---
 const $tbody = document.querySelector("#t-body"); 
-// (四象限頁面元素)
 const $peMinQuadrant = document.getElementById("pe-min");
 const $peMaxQuadrant = document.getElementById("pe-max");
 const $minTradeValueQuadrant = document.getElementById("min-trade-value");
 const $quadrantSelect = document.getElementById("quadrant-select"); 
 const $filterButtonQuadrant = document.getElementById("filter-button-quadrant"); 
 const $quadrantTbody = document.getElementById("quadrant-table-body"); 
-// (多因子頁面元素)
 const $peMinFactor = document.getElementById("factor-pe-min");
 const $peMaxFactor = document.getElementById("factor-pe-max");
 const $minTradeValueFactor = document.getElementById("factor-min-trade-value");
-const $filterButtonFactor = document.getElementById("filter-button-factor");
+const $filterButtonFactor = document.getElementById("filter-button-factor"); // <-- JS 會在這裡找按鈕
 const $factorTbodyTop = document.getElementById("factor-table-body-top"); 
 const $factorTbodyBottom = document.getElementById("factor-table-body-bottom");
-// (個股查詢頁面元素)
 const $searchInput = document.getElementById("stock-search-input");
 const $autocompleteResults = document.getElementById("autocomplete-results");
 const $detailResults = document.getElementById("detail-results");
-
-// --- (全域變數和輔助函式 保持不變) ---
 const PE_THRESHOLD = 15; 
 const PB_THRESHOLD = 2;  
-let rows = []; // 存放 all_data
+let rows = []; 
 let sortState = { key: "PE", asc: true };
+
+// --- 輔助函式 ---
 function parseNum(v){ const n=Number(String(v||"").replace(/,/g,"").trim()); return isNaN(n)?NaN:n; }
 
-// --- (頁面1 相關函式 保持不變) ---
-function render(){ /* ... */ }
-function sortBy(key){ /* ... */ }
+// --- 頁面1 相關函式 ---
+function render(){
+  $tbody.innerHTML = rows.map(r => `
+    <tr><td>${r["Code"] ?? ""}</td><td>${r["Name"] ?? ""}</td>
+    <td class="right">${r["PE"] ?? ""}</td><td class="right">${r["DividendYield(%)"] ?? ""}</td>
+    <td class="right">${r["PB"] ?? ""}</td><td>${r["FiscalYearQuarter"] ?? ""}</td></tr>
+  `).join("");
+}
+function sortBy(key){
+  const asc = (sortState.key === key) ? !sortState.asc : true; // <-- 已修正
+  sortState = { key, asc };
+  rows.sort((a,b)=>{
+    if(["PE","DividendYield(%)","PB"].includes(key)){ 
+      const x=parseNum(a[key]), y=parseNum(b[key]);
+      if (isNaN(x)&&isNaN(y)) return 0;
+      if (isNaN(x)) return 1; if (isNaN(y)) return -1;
+      return asc ? (x-y) : (y-x);
+    } else {
+      const x=(a[key]||"").toString(), y=(b[key]||"").toString();
+      return asc ? x.localeCompare(y,'zh-Hant') : y.localeCompare(x,'zh-Hant');
+    }
+  });
+  render();
+}
 
-// ========== (修改：頁面2 -> 四象限) ==========
+// --- 頁面2 (四象限) 相關函式 ---
 function renderQuadrantTable(data) {
-  const formatTradeValue = (val) => {/* ... */};
+  const formatTradeValue = (val) => { const num = parseNum(val); return isNaN(num) ? "N/A" : (num / 100000000).toFixed(2); };
   $quadrantTbody.innerHTML = data.map(r => `
     <tr><td>${r["Code"] ?? ""}</td><td>${r["Name"] ?? ""}</td>
     <td class="right">${r["DividendYield(%)"] ?? ""}</td><td class="right">${r["PE"] ?? ""}</td>
     <td class="right">${r["PB"] ?? ""}</td><td class="right">${formatTradeValue(r["TradeValue"])}</td></tr>
   `).join("");
 }
-function runQuadrantAnalysis() { // <-- 改名
+function runQuadrantAnalysis() {
   const minPE = parseNum($peMinQuadrant.value);
   const maxPE = parseNum($peMaxQuadrant.value);
   const minTradeValue = parseNum($minTradeValueQuadrant.value) * 10000;
   const quadrant = $quadrantSelect.value; 
 
-  let universe = rows.filter(stock => {/* 清洗邏輯不變 */});
+  let universe = rows.filter(stock => {
+      const pe = parseNum(stock["PE"]); const pb = parseNum(stock["PB"]);
+      const yield = parseNum(stock["DividendYield(%)"]); const tradeValue = parseNum(stock["TradeValue"]);
+      if (isNaN(pe) || isNaN(pb) || isNaN(yield) || isNaN(tradeValue)) return false; 
+      if (tradeValue < minTradeValue) return false;
+      return pe >= minPE && pe <= maxPE;
+  });
   
-  let quadrantData = universe.filter(stock => {/* 四象限篩選邏輯不變 */});
+  let quadrantData = universe.filter(stock => {
+      const pe = parseNum(stock["PE"]); const pb = parseNum(stock["PB"]);
+      switch (quadrant) {
+          case "low-pe-low-pb": return pe < PE_THRESHOLD && pb < PB_THRESHOLD;
+          case "low-pe-high-pb": return pe < PE_THRESHOLD && pb >= PB_THRESHOLD;
+          case "high-pe-low-pb": return pe >= PE_THRESHOLD && pb < PB_THRESHOLD;
+          case "high-pe-high-pb": return pe >= PE_THRESHOLD && pb >= PB_THRESHOLD;
+          default: return true;
+      }
+  });
 
-  quadrantData.sort((a, b) => {/* 殖利率排序邏輯不變 */});
+  quadrantData.sort((a, b) => {
+      const yA = parseNum(a["DividendYield(%)"]); const yB = parseNum(b["DividendYield(%)"]);
+      if (isNaN(yA) && isNaN(yB)) return 0; if (isNaN(yA)) return 1; if (isNaN(yB)) return -1;
+      return yB - yA;
+  });
   
-  renderQuadrantTable(quadrantData); // <-- 使用新的渲染函式
+  renderQuadrantTable(quadrantData);
 }
-// ========== (修改結束) ==========
 
-// ========== (新增：頁面3 -> 多因子模型) ==========
+// --- 頁面3 (多因子) 相關函式 ---
 function renderFactorModelTable(data, tbodyElement) {
-  const formatTradeValue = (val) => {/* ... */};
+  const formatTradeValue = (val) => { const num = parseNum(val); return isNaN(num) ? "N/A" : (num / 100000000).toFixed(2); };
   tbodyElement.innerHTML = data.map(r => `
     <tr><td>${r["Code"] ?? ""}</td><td>${r["Name"] ?? ""}</td>
     <td class="right">${r["final_score"] ? r["final_score"].toFixed(2) : "N/A"}</td>
@@ -204,63 +245,60 @@ function renderFactorModelTable(data, tbodyElement) {
     <td class="right">${r["PB"] ?? ""}</td><td class="right">${formatTradeValue(r["TradeValue"])}</td></tr>
   `).join("");
 }
-function runFactorModelAnalysis() { // <-- 新函式
+function runFactorModelAnalysis() {
   const minPE = parseNum($peMinFactor.value);
   const maxPE = parseNum($peMaxFactor.value);
   const minTradeValue = parseNum($minTradeValueFactor.value) * 10000;
 
-  let universe = rows.filter(stock => {/* 清洗邏輯同上 */});
+  let universe = rows.filter(stock => {
+      const pe = parseNum(stock["PE"]); const pb = parseNum(stock["PB"]);
+      const yield = parseNum(stock["DividendYield(%)"]); const tradeValue = parseNum(stock["TradeValue"]);
+      if (isNaN(pe) || isNaN(pb) || isNaN(yield) || isNaN(tradeValue)) return false; 
+      if (tradeValue < minTradeValue) return false;
+      return pe >= minPE && pe <= maxPE;
+  });
 
-  if (universe.length === 0) {/* ... */ return; }
+  if (universe.length === 0) {
+      $factorTbodyTop.innerHTML = `<tr><td colspan="7">沒有任何股票符合篩選條件。</td></tr>`;
+      $factorTbodyBottom.innerHTML = `<tr><td colspan="7">沒有任何股票符合篩選條件。</td></tr>`;
+      return;
+  }
 
   let scoredData = universe.map(stock => ({...stock}));
-  // PE 評分
   scoredData.sort((a, b) => parseNum(a["PE"]) - parseNum(b["PE"]));
   scoredData.forEach((stock, index) => { stock.pe_score = 100 - (index / scoredData.length) * 100; });
-  // PB 評分
   scoredData.sort((a, b) => parseNum(a["PB"]) - parseNum(b["PB"]));
   scoredData.forEach((stock, index) => { stock.pb_score = 100 - (index / scoredData.length) * 100; });
-  // 殖利率 評分
   scoredData.sort((a, b) => parseNum(b["DividendYield(%)"]) - parseNum(a["DividendYield(%)"]));
   scoredData.forEach((stock, index) => { stock.yield_score = 100 - (index / scoredData.length) * 100; });
-  // 總分計算
   scoredData.forEach(stock => {
     stock.final_score = (stock.pe_score * 0.4) + (stock.pb_score * 0.3) + (stock.yield_score * 0.3);
   });
-  // 最終排序
   scoredData.sort((a, b) => b.final_score - a.final_score);
   
-  // 渲染 Top 10 / Bottom 10
   renderFactorModelTable(scoredData.slice(0, 10), $factorTbodyTop);
   renderFactorModelTable(scoredData.slice(-10).reverse(), $factorTbodyBottom);
 }
-// ========== (新增結束) ==========
 
-// (頁面4 個股查詢相關函式 - 保持不變)
+// --- 頁面4 (個股查詢) 相關函式 ---
 function handleAutocomplete() { /* ... */ }
 function handleSelectStock(e) { /* ... */ }
 function renderStockDetails(data) { /* ... */ }
 
-// ========== (修改：系統啟動與事件綁定) ==========
+// --- 系統啟動與事件綁定 ---
 async function load(){
-  // (移除了 $status)
   const res = await fetch("/api/view"); 
   const j = await res.json();
   if (!j.ok) { console.error(`載入資料失敗: ${j.error}`); return; }
   rows = j.all_data || []; 
-  sortBy("PE"); // 預設排序頁面1
-  // (移除了 $status)
+  sortBy("PE"); 
 }
 
-// (移除了 refresh 按鈕的事件綁定)
+// (移除了 refresh 按鈕事件)
 
-// (頁面1 排序事件 保持不變)
 document.querySelectorAll("#t th[data-key]").forEach(th => th.addEventListener("click", () => sortBy(th.dataset.key)));
-// (頁面2 按鈕事件 -> 綁定到 runQuadrantAnalysis)
 $filterButtonQuadrant.addEventListener('click', runQuadrantAnalysis); 
-// (新增：頁面3 按鈕事件 -> 綁定到 runFactorModelAnalysis)
 $filterButtonFactor.addEventListener('click', runFactorModelAnalysis);
-// (頁面4 事件綁定 保持不變)
 $searchInput.addEventListener('input', handleAutocomplete);
 $autocompleteResults.addEventListener('click', handleSelectStock);
 document.addEventListener('click', (e) => {
@@ -269,18 +307,33 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// (側邊欄 JS 邏輯 保持不變)
 const navLinks = document.querySelectorAll(".nav-link");
 const contentPages = document.querySelectorAll(".content-page");
-function showPage(pageId) { /* ... */ }
-navLinks.forEach(link => { /* ... */ });
+function showPage(pageId) {
+  contentPages.forEach(page => { page.classList.add("hidden"); });
+  const targetPage = document.getElementById(pageId);
+  if (targetPage) { targetPage.classList.remove("hidden"); }
+  navLinks.forEach(link => {
+    if (link.dataset.target === pageId) {
+      link.classList.add("active");
+    } else {
+      link.classList.remove("active");
+    }
+  });
+}
+navLinks.forEach(link => {
+  link.addEventListener("click", (e) => {
+    e.preventDefault();
+    const targetPageId = link.dataset.target;
+    showPage(targetPageId);
+  });
+});
 
-// (啟動函式 - 修改：需要執行兩種分析)
 async function startup() {
   await load();
-  showPage("page-bwibbu"); // 預設顯示頁面1
-  runQuadrantAnalysis(); // 預先執行四象限分析
-  runFactorModelAnalysis(); // 預先執行多因子分析
+  showPage("page-bwibbu"); 
+  runQuadrantAnalysis(); 
+  runFactorModelAnalysis(); 
 }
 startup();
 
