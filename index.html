@@ -349,14 +349,22 @@ function renderStockDetails(data) {
   const score = stockRankInfo ? stockRankInfo.final_score.toFixed(2) : "N/A (未評分)";
   const rank = stockRankInfo ? `${stockRankInfo.rank} / ${rankedStocks.length || 'N/A'}` : "N/A (未評分)";
   const displayFields = [
-      { title: "代碼", key: "Code" }, { title: "名稱", key: "Name" },
-      { title: "模型總分", value: score }, { title: "市場排名", value: rank },
-      { title: "殖利率(%)", key: "DividendYield(%)" }, { title: "本益比 (PE)", key: "PE" },
-      { title: "股價淨值比 (PB)", key: "PB" }, { title: "資料季度 (PE/PB)", key: "FiscalYearQuarter" },
-      { title: "開盤價", key: "OpeningPrice" }, { title: "最高價", key: "HighestPrice" },
-      { title: "最低價", key: "LowestPrice" }, { title: "收盤價", key: "ClosingPrice" },
-      { title: "漲跌", key: "Change" }, { title: "成交筆數", key: "Transaction" },
-      { title: "成交金額", key: "TradeValue" }, { title: "成交股數", key: "TradeVolume" }
+      { title: "代碼", key: "Code" }, 
+      { title: "名稱", key: "Name" },
+      { title: "模型總分", value: score }, 
+      { title: "市場排名", value: rank },
+      { title: "殖利率(%)", key: "DividendYield(%)" }, 
+      { title: "本益比 (PE)", key: "PE" },
+      { title: "股價淨值比 (PB)", key: "PB" }, 
+      { title: "資料季度 (PE/PB)", key: "FiscalYearQuarter" },
+      { title: "開盤價", key: "Open" }, 
+      { title: "最高價", key: "High" },
+      { title: "最低價", key: "Low" }, 
+      { title: "收盤價", key: "Close" },
+      { title: "漲跌", key: "Change" }, 
+      { title: "成交筆數", key: "Transaction" },
+      { title: "成交金額", key: "TradeValue" }, 
+      { title: "成交股數", key: "TradeVolume" }
   ];
   let html = `<h3>${data.Name || 'N/A'} (${data.Code || 'N/A'}) 詳細資料</h3>
               <table><tbody>`;
